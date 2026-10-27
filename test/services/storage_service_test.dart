@@ -243,5 +243,15 @@ void main() {
       expect((await storage.getTaskLists()).any((l) => l.id == created.id), isFalse);
       expect(await storage.getTasks(created.id), isEmpty);
     });
+
+    test('manages and persists hasCompletedOnboarding flag', () async {
+      expect(storage.hasCompletedOnboarding, isFalse);
+
+      await storage.setHasCompletedOnboarding(true);
+      expect(storage.hasCompletedOnboarding, isTrue);
+
+      await storage.setHasCompletedOnboarding(false);
+      expect(storage.hasCompletedOnboarding, isFalse);
+    });
   });
 }

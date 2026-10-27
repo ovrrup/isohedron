@@ -126,5 +126,11 @@ void main() {
       // Even if network throws, controller handles it gracefully
       await expectLater(appController.syncCurrentList(), completes);
     });
+
+    test('onboarding state defaults to false and switches to completed', () async {
+      expect(appController.hasCompletedOnboarding, isFalse);
+      await appController.completeOnboarding();
+      expect(appController.hasCompletedOnboarding, isTrue);
+    });
   });
 }

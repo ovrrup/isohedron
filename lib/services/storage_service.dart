@@ -12,10 +12,18 @@ class StorageService {
   String _selectedTaskListId = 'local_default';
   String? _googleAccessToken;
   String? _googleUserEmail;
+  bool _hasCompletedOnboarding = false;
 
   StorageService({File? storageFile}) : _storageFile = storageFile;
 
   factory StorageService.inMemory() => StorageService(storageFile: null);
+
+  bool get hasCompletedOnboarding => _hasCompletedOnboarding;
+
+  Future<void> setHasCompletedOnboarding(bool value) async {
+    _hasCompletedOnboarding = value;
+    await _persist();
+  }
 
   static const TaskList defaultLocalList = TaskList(
     id: 'local_default',
@@ -84,6 +92,8 @@ class StorageService {
         (data['selectedTaskListId'] as String?) ?? 'local_default';
     _googleAccessToken = data['googleAccessToken'] as String?;
     _googleUserEmail = data['googleUserEmail'] as String?;
+    _hasCompletedOnboarding =
+        (data['hasCompletedOnboarding'] as bool?) ?? false;
 
     final listsData = data['taskLists'] as List<dynamic>?;
     if (listsData != null && listsData.isNotEmpty) {
@@ -123,6 +133,7 @@ class StorageService {
         'selectedTaskListId': _selectedTaskListId,
         'googleAccessToken': _googleAccessToken,
         'googleUserEmail': _googleUserEmail,
+        'hasCompletedOnboarding': _hasCompletedOnboarding,
         'taskLists': _taskLists.map((l) => l.toMap()).toList(),
         'tasks': _tasksByList.map(
           (k, v) => MapEntry(k, v.map((t) => t.toMap()).toList()),
