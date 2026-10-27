@@ -1,4 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../theme/app_theme.dart';
 
 class PlanTaskHelper {
   static DateTime plusOneHour({DateTime? from}) {
@@ -33,109 +36,214 @@ class PlanTaskPromptData {
   }
 }
 
+/// Authentic iOS Cupertino modal bottom sheet for scheduling task reminders.
 Future<DateTime?> showPlanTaskDialog({
   required BuildContext context,
   DateTime? initialTime,
 }) {
-  DateTime? chosen = initialTime;
+  DateTime chosen = initialTime ?? PlanTaskHelper.plusOneHour();
 
-  return showDialog<DateTime>(
+  return showCupertinoModalPopup<DateTime>(
     context: context,
     builder: (ctx) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final sheetBg = isDark
+          ? AppTheme.darkSecondaryGroupedBackground
+          : AppTheme.lightSecondaryGroupedBackground;
+
+      final pillBg = isDark
+          ? AppTheme.darkTertiaryGroupedBackground
+          : AppTheme.systemGray5Light;
+
+      final textPrimary =
+          isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
+
       return StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Schedule Reminder'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Quick shortcuts:'),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    ActionChip(
-                      label: const Text('+1 Hour'),
-                      onPressed: () {
-                        setState(() {
-                          chosen = PlanTaskHelper.plusOneHour();
-                        });
-                        Navigator.of(ctx).pop(chosen);
-                      },
-                    ),
-                    ActionChip(
-                      label: const Text('Tonight (8 PM)'),
-                      onPressed: () {
-                        setState(() {
-                          chosen = PlanTaskHelper.tonight();
-                        });
-                        Navigator.of(ctx).pop(chosen);
-                      },
-                    ),
-                    ActionChip(
-                      label: const Text('Tomorrow (9 AM)'),
-                      onPressed: () {
-                        setState(() {
-                          chosen = PlanTaskHelper.tomorrowMorning();
-                        });
-                        Navigator.of(ctx).pop(chosen);
-                      },
-                    ),
-                  ],
+          return SafeArea(
+            top: false,
+            child: Container(
+              decoration: BoxDecoration(
+                color: sheetBg,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
                 ),
-                const SizedBox(height: 16),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.calendar_month),
-                  title: Text(
-                    chosen != null
-                        ? '${chosen!.toLocal().year}-${chosen!.toLocal().month.toString().padLeft(2, '0')}-${chosen!.toLocal().day.toString().padLeft(2, '0')} ${chosen!.toLocal().hour.toString().padLeft(2, '0')}:${chosen!.toLocal().minute.toString().padLeft(2, '0')}'
-                        : 'Pick custom date & time',
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minSize: 32,
+                          onPressed: () => Navigator.of(ctx).pop(null),
+                          child: const Text('Cancel'),
+                        ),
+                        Text(
+                          'Schedule Reminder',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.3,
+                            color: textPrimary,
+                          ),
+                        ),
+                        CupertinoButton(
+                          padding: EdgeInsets.zero,
+                          minSize: 32,
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.of(ctx).pop(chosen);
+                          },
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: chosen ?? DateTime.now(),
-                      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                    );
-                    if (date != null && context.mounted) {
-                      final time = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay.fromDateTime(chosen ?? DateTime.now()),
-                      );
-                      if (time != null) {
-                        setState(() {
-                          chosen = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
-                        });
-                      }
-                    }
-                  },
-                ),
-              ],
+                  const Divider(height: 0.5, thickness: 0.5),
+
+                  // Quick shortcut pills
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _ShortcutPill(
+                          label: '+1 Hour',
+                          backgroundColor: pillBg,
+                          textColor: textPrimary,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              chosen = PlanTaskHelper.plusOneHour();
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _ShortcutPill(
+                          label: 'Tonight',
+                          backgroundColor: pillBg,
+                          textColor: textPrimary,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              chosen = PlanTaskHelper.tonight();
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _ShortcutPill(
+                          label: 'Tomorrow',
+                          backgroundColor: pillBg,
+                          textColor: textPrimary,
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              chosen = PlanTaskHelper.tomorrowMorning();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Cupertino Date & Time Wheel Picker
+                  SizedBox(
+                    height: 216,
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.dateAndTime,
+                      initialDateTime: chosen.isAfter(DateTime.now())
+                          ? chosen
+                          : DateTime.now().add(const Duration(minutes: 5)),
+                      minimumDate:
+                          DateTime.now().subtract(const Duration(minutes: 2)),
+                      maximumDate:
+                          DateTime.now().add(const Duration(days: 365)),
+                      use24hFormat: false,
+                      onDateTimeChanged: (DateTime newDateTime) {
+                        chosen = newDateTime;
+                      },
+                    ),
+                  ),
+
+                  if (initialTime != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: CupertinoButton(
+                        minSize: 36,
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          Navigator.of(ctx).pop(null);
+                        },
+                        child: Text(
+                          'Remove Reminder',
+                          style: TextStyle(
+                            color: isDark
+                                ? AppTheme.darkSystemRed
+                                : AppTheme.systemRed,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(null),
-                child: const Text('Clear'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(chosen),
-                child: const Text('Set Reminder'),
-              ),
-            ],
           );
         },
       );
     },
   );
+}
+
+class _ShortcutPill extends StatelessWidget {
+  final String label;
+  final Color backgroundColor;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  const _ShortcutPill({
+    required this.label,
+    required this.backgroundColor,
+    required this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
+              color: textColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
