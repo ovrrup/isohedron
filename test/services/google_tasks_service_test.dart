@@ -136,5 +136,38 @@ void main() {
       await googleService.signOut();
       expect(googleService.isAuthenticated, isFalse);
     });
+
+    test('syncList propagates local deletions and promotes local_task_ IDs', () async {
+      await googleService.signIn();
+
+      // 1. Add task with local_task_ prefix
+      final offlineTask = TaskItem(
+        id: 'local_task_offline_99',
+        taskListId: 'g-list-default',
+        title: 'Offline created idea',
+        updatedAt: DateTime.now(),
+      );
+      await storage.upsertTask(offlineTask);
+
+      // Perform sync
+      await googleService.syncList('g-list-default', storage);
+
+      // Verify the local ID was replaced with remote ID in local storage
+      final localAfter = await storage.getTasks('g-list-default');
+      expect(localAfter.any((t) => t.id == 'local_task_offline_99'), isFalse);
+      expect(localAfter.any((t) => t.title == 'Offline created idea'), isTrue);
+
+      // 2. Delete remote task locally and sync
+      final remoteTaskToDelete = localAfter.firstWhere((t) => t.title == 'Offline created idea');
+      await storage.deleteTask('g-list-default', remoteTaskToDelete.id);
+      expect(storage.getDeletedTaskIds(), contains(remoteTaskToDelete.id));
+
+      await googleService.syncList('g-list-default', storage);
+
+      // Remote backend should now no longer have it, and tombstone is purged
+      final remoteTasksAfter = await googleService.fetchTasks('g-list-default');
+      expect(remoteTasksAfter.any((t) => t.id == remoteTaskToDelete.id), isFalse);
+      expect(storage.getDeletedTaskIds(), isNot(contains(remoteTaskToDelete.id)));
+    });
   });
 }

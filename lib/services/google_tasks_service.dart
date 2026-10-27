@@ -16,6 +16,8 @@ abstract class GoogleTasksClient {
   Future<List<TaskList>> fetchTaskLists();
   Future<List<TaskItem>> fetchTasks(String taskListId);
   Future<TaskItem> pushTask(TaskItem task);
+  Future<void> deleteTask(String taskListId, String taskId);
+  Future<void> deleteTaskList(String taskListId);
 }
 
 class GoogleAuthClient extends http.BaseClient {
@@ -95,15 +97,19 @@ class MockGoogleTasksClient implements GoogleTasksClient {
     if (!_signedIn) throw StateError('Not signed in to Google Tasks');
     final list = _tasks.putIfAbsent(task.taskListId, () => []);
 
-    // Format notes the same way Google Tasks API stores them
     final googleNotes = TaskItem.toGoogleNotes(
       userNotes: task.notes,
       plannedTime: task.plannedTime,
       cancelReason: task.cancelReason,
     );
 
+    // If local task with local_task_offline prefix, simulate Google assigning a remote ID
+    final remoteId = task.id.startsWith('local_task_offline')
+        ? 'gtask_${task.id.replaceFirst('local_task_offline_', '')}'
+        : task.id;
+
     final updated = TaskItem.parseFromGoogleTask(
-      id: task.id,
+      id: remoteId,
       taskListId: task.taskListId,
       title: task.title,
       rawNotes: googleNotes,
@@ -112,13 +118,29 @@ class MockGoogleTasksClient implements GoogleTasksClient {
       updatedAt: DateTime.now(),
     );
 
-    final idx = list.indexWhere((t) => t.id == task.id);
+    final idx = list.indexWhere((t) => t.id == task.id || t.id == remoteId);
     if (idx >= 0) {
       list[idx] = updated;
     } else {
       list.add(updated);
     }
     return updated;
+  }
+
+  @override
+  Future<void> deleteTask(String taskListId, String taskId) async {
+    if (!_signedIn) throw StateError('Not signed in to Google Tasks');
+    final list = _tasks[taskListId];
+    if (list != null) {
+      list.removeWhere((t) => t.id == taskId);
+    }
+  }
+
+  @override
+  Future<void> deleteTaskList(String taskListId) async {
+    if (!_signedIn) throw StateError('Not signed in to Google Tasks');
+    _lists.removeWhere((l) => l.id == taskListId);
+    _tasks.remove(taskListId);
   }
 }
 
@@ -247,7 +269,8 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
     final items = result.items ?? [];
     return items.map((t) {
       final isCompleted = t.status == 'completed';
-      final updatedAt = t.updated != null ? DateTime.parse(t.updated!) : DateTime.now();
+      final updatedAt =
+          t.updated != null ? DateTime.parse(t.updated!) : DateTime.now();
       final due = t.due != null ? DateTime.parse(t.due!) : null;
 
       return TaskItem.parseFromGoogleTask(
@@ -304,6 +327,20 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
       updatedAt: updatedAt,
     );
   }
+
+  @override
+  Future<void> deleteTask(String taskListId, String taskId) async {
+    final api = _tasksApi;
+    if (api == null) throw StateError('Not signed in to Google Tasks');
+    await api.tasks.delete(taskListId, taskId);
+  }
+
+  @override
+  Future<void> deleteTaskList(String taskListId) async {
+    final api = _tasksApi;
+    if (api == null) throw StateError('Not signed in to Google Tasks');
+    await api.tasklists.delete(taskListId);
+  }
 }
 
 class GoogleTasksService {
@@ -313,7 +350,9 @@ class GoogleTasksService {
       : _client = client ?? LiveGoogleTasksClient();
 
   factory GoogleTasksService.live([GoogleSignIn? googleSignIn]) =>
-      GoogleTasksService(client: LiveGoogleTasksClient(googleSignIn: googleSignIn));
+      GoogleTasksService(
+        client: LiveGoogleTasksClient(googleSignIn: googleSignIn),
+      );
 
   factory GoogleTasksService.mock({
     String mockEmail = 'user@example.com',
@@ -343,34 +382,82 @@ class GoogleTasksService {
   Future<List<TaskItem>> fetchTasks(String taskListId) =>
       _client.fetchTasks(taskListId);
   Future<TaskItem> pushTask(TaskItem task) => _client.pushTask(task);
+  Future<void> deleteTask(String taskListId, String taskId) =>
+      _client.deleteTask(taskListId, taskId);
+  Future<void> deleteTaskList(String taskListId) =>
+      _client.deleteTaskList(taskListId);
 
   Future<void> syncList(String taskListId, StorageService storage) async {
     if (!isAuthenticated) return;
 
-    final remoteTasks = await fetchTasks(taskListId);
-    final localTasks = await storage.getTasks(taskListId);
+    // 1. Remote Deletion Propagation:
+    // Process local tombstones against remote
+    final tombstones = List<String>.from(storage.getDeletedTaskIds());
+    for (final deletedId in tombstones) {
+      try {
+        await deleteTask(taskListId, deletedId);
+      } catch (_) {
+        // Ignored if already deleted or not present
+      }
+      await storage.purgeDeletedTaskId(deletedId);
+    }
 
+    // 2. Fetch fresh remote state
+    List<TaskItem> remoteTasks;
+    try {
+      remoteTasks = await fetchTasks(taskListId);
+    } catch (_) {
+      // Remote fetch failed (offline)
+      return;
+    }
+
+    // 3. Fetch local state
+    final localTasks = await storage.getTasks(taskListId);
     final merged = <String, TaskItem>{};
 
     for (final remote in remoteTasks) {
+      if (storage.getDeletedTaskIds().contains(remote.id)) continue;
       merged[remote.id] = remote;
     }
 
+    // 4. Reconcile local tasks
     for (final local in localTasks) {
-      if (!merged.containsKey(local.id)) {
-        // Task created locally while offline -> push to Google Tasks
-        final pushed = await pushTask(local);
-        merged[pushed.id] = pushed;
-      } else {
-        final existing = merged[local.id]!;
-        if (local.updatedAt.isAfter(existing.updatedAt)) {
-          // Local update is newer -> push to remote
+      if (storage.getDeletedTaskIds().contains(local.id)) continue;
+
+      final isLocalOnly =
+          local.id.startsWith('local_') || local.id.startsWith('local-');
+
+      if (isLocalOnly) {
+        // Offline-created task: push to remote and replace local ID with real remote ID
+        try {
           final pushed = await pushTask(local);
+          if (local.id != pushed.id) {
+            await storage.replaceTaskId(local.id, pushed);
+          }
           merged[pushed.id] = pushed;
+        } catch (_) {
+          merged[local.id] = local;
+        }
+      } else if (!merged.containsKey(local.id)) {
+        // Task exists locally with a remote ID but is missing remotely -> deleted on remote
+        await storage.deleteTask(taskListId, local.id);
+      } else {
+        // Both exist: resolve by latest updatedAt timestamp
+        final remote = merged[local.id]!;
+        if (local.updatedAt.isAfter(remote.updatedAt)) {
+          try {
+            final pushed = await pushTask(local);
+            merged[local.id] = pushed;
+          } catch (_) {
+            merged[local.id] = local;
+          }
+        } else {
+          merged[local.id] = remote;
         }
       }
     }
 
+    // 5. Persist reconciled state
     await storage.saveTasks(taskListId, merged.values.toList());
   }
 }

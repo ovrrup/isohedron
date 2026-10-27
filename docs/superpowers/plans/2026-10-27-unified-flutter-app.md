@@ -15,8 +15,7 @@
 * Target Android API: `compileSdk = 34`, `minSdk = 21`, `targetSdk = 34`.
 * Java Version: Java 17 (`sourceCompatibility` & `targetCompatibility`).
 * Keystore Alias: `isohedron`.
-* Certificate Fingerprint (SHA-256): `23:6F:78:6A:EF:87:CC:60:27:0A:FC:AF:85:76:12:6E:F8:65:C5:44:CD:6F:69:74:7A:35:48:F5:B0:81:88:80`.
-* Certificate Fingerprint (SHA-1): `94:55:00:41:DC:C6:94:AB:0C:21:5D:93:2D:C6:6B:03:73:0A:2B:5B`.
+* Release Signing: Managed via GitHub Repository Secrets (`ANDROID_KEYSTORE_BASE64`).
 * Output APK Filename: `Isohedron-nightly-signed.apk`.
 * Zero-clutter rolling nightly: Only 1 rolling `nightly` tag/release on GitHub.
 

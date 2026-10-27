@@ -53,7 +53,7 @@ This design converts Isohedron into a unified root Flutter project, providing th
 * **`lib/main.dart`**: Entrypoint initializing `path_provider` local directory storage, real `NotificationService` (wrapping `flutter_local_notifications`), and local-first `GoogleTasksService.mock()`, running `IsohedronApp`.
 * **Google Tasks Integration**: Real, fully functional two-way Google Tasks synchronization via `google_sign_in` and `googleapis.tasks.v1` (`TasksApi`).
   * Uses OAuth 2.0 scope `https://www.googleapis.com/auth/tasks`.
-  * Authenticates through Google Play Services on Android (`com.ovrrup.isohedron` with release keystore SHA-1 `94:55:00:41:DC:C6:94:AB:0C:21:5D:93:2D:C6:6B:03:73:0A:2B:5B`).
+  * Authenticates through Google Play Services on Android (`com.ovrrup.isohedron`).
   * Fetches real remote task lists (`tasklists.list()`), creates/updates remote tasks, and pulls remote changes into local storage.
   * Preserves metadata (`[Planned: ...]`, `[Cancelled: ...]`) in task notes across devices.
   * Preserves local-first offline usage when not signed in.

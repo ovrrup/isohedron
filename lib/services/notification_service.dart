@@ -220,6 +220,9 @@ class NotificationService {
   factory NotificationService.local() =>
       NotificationService(adapter: FlutterLocalNotificationAdapter());
 
+  factory NotificationService.inMemory() =>
+      NotificationService(adapter: MockNotificationAdapter());
+
   Future<void> init() async {
     await _adapter.init();
   }
