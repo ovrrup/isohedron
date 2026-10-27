@@ -24,11 +24,15 @@ class StorageService {
     isLocal: true,
   );
 
-  File? get _tmpFile =>
-      _storageFile != null ? File('${_storageFile.path}.tmp') : null;
+  File? get _tmpFile {
+    final file = _storageFile;
+    return file != null ? File('${file.path}.tmp') : null;
+  }
 
-  File? get _bakFile =>
-      _storageFile != null ? File('${_storageFile.path}.bak') : null;
+  File? get _bakFile {
+    final file = _storageFile;
+    return file != null ? File('${file.path}.bak') : null;
+  }
 
   Future<void> init() async {
     final file = _storageFile;

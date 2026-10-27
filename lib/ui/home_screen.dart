@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
 import '../models/task_filter.dart';
-import '../models/task_item.dart';
 import 'cancel_reason_dialog.dart';
 import 'plan_task_dialog.dart';
 import 'reflection_dialog.dart';
 import 'task_list_switcher.dart';
+
+export '../controllers/isohedron_app_controller.dart';
 
 class HomeScreen extends StatefulWidget {
   final IsohedronAppController controller;
