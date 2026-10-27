@@ -2,6 +2,10 @@
 *.jks
 *.keystore
 *.p12
+*.pkcs12
+*.pem
+*.key
+*.pfx
 key.properties
 
 # Flutter / Dart

@@ -23,7 +23,7 @@ jobs:
         run: |
           git fetch origin --tags || true
           if git rev-parse --verify refs/tags/nightly >/dev/null 2>&1; then
-            NIGHTLY_COMMIT=$(git rev-parse refs/tags/nightly)
+            NIGHTLY_COMMIT=$(git rev-parse refs/tags/nightly^{commit})
             HEAD_COMMIT=$(git rev-parse HEAD)
             echo "Latest nightly commit: $NIGHTLY_COMMIT"
             echo "Current HEAD commit:    $HEAD_COMMIT"
@@ -92,28 +92,30 @@ jobs:
           # Assemble unsigned package bundle
           zip -j "$UNSIGNED_APK" pubspec.yaml README.md
 
-          # Locate apksigner from Android SDK build tools
-          APKSIGNER=$(find "$ANDROID_SDK_ROOT/build-tools" -name apksigner | sort -V | tail -n 1)
-          if [ -z "$APKSIGNER" ]; then
-            echo "apksigner not found in standard path, falling back to PATH apksigner or openssl"
+          # Locate apksigner from Android SDK build tools or PATH
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
             APKSIGNER="apksigner"
           fi
 
-          echo "Signing APK with apksigner sign..."
-          if command -v "$APKSIGNER" >/dev/null 2>&1; then
-            "$APKSIGNER" sign \
-              --ks release.jks \
-              --ks-key-alias "$KEY_ALIAS" \
-              --ks-pass "pass:$KEYSTORE_PASS" \
-              --key-pass "pass:$KEY_PASS" \
-              --out "$SIGNED_APK" \
-              "$UNSIGNED_APK"
-
-            echo "Verifying APK signature..."
-            "$APKSIGNER" verify "$SIGNED_APK"
-          else
-            cp "$UNSIGNED_APK" "$SIGNED_APK"
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found in Android SDK build-tools or PATH" >&2
+            exit 1
           fi
+
+          echo "Signing APK with apksigner ($APKSIGNER)..."
+          "$APKSIGNER" sign \
+            --ks release.jks \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$KEYSTORE_PASS" \
+            --key-pass "pass:$KEY_PASS" \
+            --min-sdk-version 21 \
+            --out "$SIGNED_APK" \
+            "$UNSIGNED_APK"
+
+          echo "Verifying APK signature..."
+          "$APKSIGNER" verify --min-sdk-version 21 --verbose "$SIGNED_APK"
 
       - name: Generate Changelog
         if: steps.commit_check.outputs.skip != 'true'
@@ -123,8 +125,8 @@ jobs:
           echo "Commit: \`$(git rev-parse --short HEAD)\`" >> changelog.md
           echo "" >> changelog.md
           echo "### Recent Changes:" >> changelog.md
-          if git rev-parse --verify refs/tags/nightly >/dev/null 2>&1; then
-            git log refs/tags/nightly..HEAD --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" >> changelog.md || true
+          if git rev-parse --verify refs/tags/nightly^{commit} >/dev/null 2>&1; then
+            git log refs/tags/nightly^{commit}..HEAD --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" >> changelog.md || true
           else
             git log -n 10 --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" >> changelog.md
           fi
@@ -141,8 +143,9 @@ jobs:
           gh release delete nightly --yes --cleanup-tag || true
           git push --delete origin nightly 2>/dev/null || true
 
-          # 2. Publish new rolling pre-release
+          # 2. Publish new rolling pre-release attached to the verified commit
           gh release create nightly Isohedron-nightly-signed.apk \
+            --target "${{ github.sha }}" \
             --prerelease \
             --title "Isohedron Nightly - $(date -u +'%Y-%m-%d')" \
             --notes-file changelog.md

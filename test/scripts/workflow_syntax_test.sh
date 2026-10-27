@@ -24,8 +24,8 @@ if ! grep -q 'contents: write' "$WORKFLOW"; then
 fi
 
 # 3. Verify commit-checking logic
-if ! grep -q 'refs/tags/nightly' "$WORKFLOW" && ! grep -q 'git rev-parse' "$WORKFLOW"; then
-  echo "FAIL: Missing commit-check comparison against nightly tag"
+if ! grep -q 'refs/tags/nightly\^{commit}' "$WORKFLOW"; then
+  echo "FAIL: Missing commit-check dereferencing (refs/tags/nightly^{commit})"
   exit 1
 fi
 
@@ -35,9 +35,9 @@ if ! grep -q 'ANDROID_KEYSTORE_BASE64' "$WORKFLOW" || ! grep -q 'ANDROID_KEY_ALI
   exit 1
 fi
 
-# 5. Verify apksigner signing
-if ! grep -q 'apksigner sign' "$WORKFLOW"; then
-  echo "FAIL: Missing apksigner sign step"
+# 5. Verify apksigner signing with min-sdk-version
+if (! grep -q 'apksigner sign' "$WORKFLOW" && ! grep -q '"\$APKSIGNER" sign' "$WORKFLOW") || ! grep -q -- '--min-sdk-version' "$WORKFLOW"; then
+  echo "FAIL: Missing apksigner sign step with --min-sdk-version"
   exit 1
 fi
 
@@ -47,8 +47,8 @@ if ! grep -q 'gh release delete nightly' "$WORKFLOW"; then
   exit 1
 fi
 
-if ! grep -q 'gh release create nightly' "$WORKFLOW" || ! grep -q -- '--prerelease' "$WORKFLOW"; then
-  echo "FAIL: Missing rolling release creation command (gh release create nightly ... --prerelease)"
+if ! grep -q 'gh release create nightly' "$WORKFLOW" || ! grep -q -- '--prerelease' "$WORKFLOW" || ! grep -q -- '--target' "$WORKFLOW"; then
+  echo "FAIL: Missing rolling release creation command with --prerelease and --target"
   exit 1
 fi
 
