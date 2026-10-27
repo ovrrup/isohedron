@@ -1,3 +1,9 @@
+# Android Keystores & Signing Secrets
+*.jks
+*.keystore
+*.p12
+key.properties
+
 # Flutter / Dart
 .dart_tool/
 .flutter-plugins
