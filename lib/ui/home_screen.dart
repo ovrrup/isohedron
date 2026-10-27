@@ -34,6 +34,7 @@ class IsohedronAppController {
   bool get isSyncing => _isSyncing;
   bool get isGoogleConnected => googleTasks.isAuthenticated;
   String? get googleEmail => googleTasks.userEmail;
+  String? get googleLastError => googleTasks.lastError;
 
   TaskList get currentList {
     return _taskLists.firstWhere(
@@ -102,12 +103,14 @@ class IsohedronAppController {
     await loadCurrentTasks();
   }
 
-  Future<void> signInGoogle() async {
+  Future<bool> signInGoogle() async {
     final success = await googleTasks.signIn();
     if (success) {
       await loadTaskLists();
       await loadCurrentTasks();
+      return true;
     }
+    return false;
   }
 
   Future<void> signOutGoogle() async {
@@ -565,9 +568,28 @@ class _HomeScreenState extends State<HomeScreen> {
         return AlertDialog(
           title: const Text('Google Tasks Account'),
           content: controller.isGoogleConnected
-              ? Text('Signed in as:\n${controller.googleEmail}')
-              : const Text(
-                  'Connect Google Tasks to sync tasks and lists across devices.\n\nIsohedron works 100% offline with local storage when not connected.',
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Status: Connected', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                    const SizedBox(height: 8),
+                    Text('Signed in as:\n${controller.googleEmail}'),
+                  ],
+                )
+              : const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Connect Google Tasks to sync tasks and lists across devices.\n\nIsohedron functions 100% locally with offline storage when not connected.',
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Android OAuth Credentials:\nPackage: com.ovrrup.isohedron\nSHA-1: 94:55:00:41:DC:C6:94:AB:0C:21:5D:93:2D:C6:6B:03:73:0A:2B:5B',
+                      style: TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                    ),
+                  ],
                 ),
           actions: [
             TextButton(
@@ -579,6 +601,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () async {
                   await controller.signOutGoogle();
                   if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Signed out of Google Tasks')),
+                    );
+                  }
                   setState(() {});
                 },
                 child: const Text('Sign Out'),
@@ -586,8 +613,23 @@ class _HomeScreenState extends State<HomeScreen> {
             else
               FilledButton(
                 onPressed: () async {
-                  await controller.signInGoogle();
+                  final success = await controller.signInGoogle();
                   if (ctx.mounted) Navigator.of(ctx).pop();
+                  if (context.mounted) {
+                    if (success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Connected to Google Tasks as ${controller.googleEmail}')),
+                      );
+                    } else {
+                      final err = controller.googleLastError ?? 'Sign in unsuccessful';
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Google Sign-In: $err'),
+                          duration: const Duration(seconds: 8),
+                        ),
+                      );
+                    }
+                  }
                   setState(() {});
                 },
                 child: const Text('Sign In with Google'),
