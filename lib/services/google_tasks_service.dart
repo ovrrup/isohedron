@@ -103,9 +103,9 @@ class MockGoogleTasksClient implements GoogleTasksClient {
       cancelReason: task.cancelReason,
     );
 
-    // If local task, generate remote ID
-    final remoteId = task.id.startsWith('local_task_')
-        ? 'gtask_${DateTime.now().microsecondsSinceEpoch}'
+    // If local task with local_task_offline prefix, simulate Google assigning a remote ID
+    final remoteId = task.id.startsWith('local_task_offline')
+        ? 'gtask_${task.id.replaceFirst('local_task_offline_', '')}'
         : task.id;
 
     final updated = TaskItem.parseFromGoogleTask(
@@ -424,11 +424,16 @@ class GoogleTasksService {
     for (final local in localTasks) {
       if (storage.getDeletedTaskIds().contains(local.id)) continue;
 
-      if (local.id.startsWith('local_task_')) {
+      final isLocalOnly =
+          local.id.startsWith('local_') || local.id.startsWith('local-');
+
+      if (isLocalOnly) {
         // Offline-created task: push to remote and replace local ID with real remote ID
         try {
           final pushed = await pushTask(local);
-          await storage.replaceTaskId(local.id, pushed);
+          if (local.id != pushed.id) {
+            await storage.replaceTaskId(local.id, pushed);
+          }
           merged[pushed.id] = pushed;
         } catch (_) {
           merged[local.id] = local;
