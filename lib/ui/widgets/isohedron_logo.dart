@@ -147,7 +147,7 @@ class _IsohedronPainter extends CustomPainter {
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.0, size.width * 0.024)
-      ..color = const Color(0xFFF5F0E8).withOpacity(0.85) // Linen facet borders
+      ..color = const Color(0xFFF5F0E8).withValues(alpha: 0.85) // Linen facet borders
       ..strokeJoin = StrokeJoin.round;
 
     for (final facet in facets) {
@@ -172,7 +172,7 @@ class _IsohedronPainter extends CustomPainter {
     final outerStroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.5, size.width * 0.035)
-      ..color = const Color(0xFF104477).withOpacity(0.5)
+      ..color = const Color(0xFF104477).withValues(alpha: 0.5)
       ..strokeJoin = StrokeJoin.round;
 
     canvas.drawPath(outerPath, outerStroke);

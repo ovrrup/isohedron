@@ -135,10 +135,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: AppTheme.accent.withOpacity(0.08),
+                      color: AppTheme.accent.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: AppTheme.accent.withOpacity(0.35),
+                        color: AppTheme.accent.withValues(alpha: 0.35),
                         width: 1.5,
                       ),
                     ),
@@ -151,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
-                            color: AppTheme.accent.withOpacity(0.15),
+                            color: AppTheme.accent.withValues(alpha: 0.15),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -273,16 +273,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Opacity(
+                            const Opacity(
                               opacity: 0.5,
-                              child: const IsohedronLogo(size: 72),
+                              child: IsohedronLogo(size: 72),
                             ),
                             const SizedBox(height: 18),
                             Text(
                               'Sanctuary is Clear',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -745,7 +745,7 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
           onPressed: () {
             Navigator.of(context).pop();
             Navigator.of(context).push(
-              MaterialPageRoute(
+              MaterialPageRoute<void>(
                 builder: (_) => OnboardingScreen(controller: widget.controller),
               ),
             );

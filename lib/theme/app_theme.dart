@@ -27,7 +27,7 @@ class AppTheme {
   static const Color darkOutline = Color(0xFF334155);
 
   static ThemeData get lightTheme {
-    final colorScheme = ColorScheme(
+    const colorScheme = ColorScheme(
       brightness: Brightness.light,
       primary: primary,
       onPrimary: Colors.white,
@@ -67,10 +67,10 @@ class AppTheme {
           letterSpacing: -0.3,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: lightSurface,
         elevation: 0.5,
-        shadowColor: Colors.black.withOpacity(0.04),
+        shadowColor: Colors.black.withValues(alpha: 0.04),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: Color(0xFFEBE4D5), width: 1),
@@ -151,7 +151,7 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: canvas,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -162,10 +162,10 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final colorScheme = ColorScheme(
+    const colorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: darkPrimary,
-      onPrimary: const Color(0xFF0A223B),
+      onPrimary: Color(0xFF0A223B),
       primaryContainer: Color(0xFF173F68),
       onPrimaryContainer: Color(0xFFCEE3FA),
       secondary: darkPrimary,
@@ -202,7 +202,7 @@ class AppTheme {
           letterSpacing: -0.3,
         ),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: darkSurface,
         elevation: 0,
         shape: RoundedRectangleBorder(
@@ -285,7 +285,7 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: darkCanvas,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(

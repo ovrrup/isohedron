@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../controllers/isohedron_app_controller.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'widgets/isohedron_logo.dart';
@@ -31,7 +30,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await controller.completeOnboarding();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
+      PageRouteBuilder<void>(
         pageBuilder: (context, anim1, anim2) =>
             HomeScreen(controller: controller),
         transitionsBuilder: (context, anim1, anim2, child) =>
@@ -75,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final tokenController = TextEditingController();
     final emailController = TextEditingController();
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Google OAuth Bearer Token'),
@@ -126,7 +125,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               } else {
                 setState(() {
                   _isSigningIn = false;
-                  _signInFeedback = 'Token validation failed: ${controller.googleLastError}';
+                  _signInFeedback =
+                      'Token validation failed: ${controller.googleLastError}';
                 });
               }
             },
@@ -313,9 +313,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             height: 100,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.accent.withOpacity(0.12),
+              color: AppTheme.accent.withValues(alpha: 0.12),
               border: Border.all(
-                color: AppTheme.accent.withOpacity(0.3),
+                color: AppTheme.accent.withValues(alpha: 0.3),
                 width: 2,
               ),
             ),
@@ -399,9 +399,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.1),
+                color: AppTheme.accent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -426,12 +426,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               color: isDark ? AppTheme.darkSurface : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.primary.withOpacity(0.5),
+                color: AppTheme.primary.withValues(alpha: 0.5),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.08),
+                  color: AppTheme.primary.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -446,7 +446,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: AppTheme.primary.withOpacity(0.12),
+                        color: AppTheme.primary.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: const Icon(
@@ -553,7 +553,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         color: (isDark
                                 ? AppTheme.darkSurfaceContainer
                                 : AppTheme.lightSurfaceContainer)
-                            .withOpacity(0.8),
+                            .withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
@@ -634,7 +634,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.12),
+            color: AppTheme.primary.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: AppTheme.primary, size: 22),
