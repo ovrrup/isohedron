@@ -33,7 +33,8 @@ void main() {
       expect(controller.overdueTasks, isEmpty);
     });
 
-    test('notifies listeners when creating, completing, and deleting tasks', () async {
+    test('notifies listeners when creating, completing, and deleting tasks',
+        () async {
       int notifyCount = 0;
       controller.addListener(() {
         notifyCount++;
@@ -64,8 +65,10 @@ void main() {
     });
 
     test('filters tasks according to active filter and search text', () async {
-      final t1 = await controller.createTask(title: 'Grocery shopping', notes: 'Milk and bread');
-      final t2 = await controller.createTask(title: 'Write blog post', notes: 'Flutter architecture');
+      final t1 = await controller.createTask(
+          title: 'Grocery shopping', notes: 'Milk and bread');
+      final t2 = await controller.createTask(
+          title: 'Write blog post', notes: 'Flutter architecture');
 
       expect(controller.visibleTasks.length, 2);
 

@@ -1,5 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/task_item.dart';
+import '../theme/app_theme.dart';
 
 class CancelReasonController {
   static const List<String> presetReasons = [
@@ -47,54 +50,118 @@ class CancelReasonPromptData {
   String submit() => controller.resolvedReason;
 }
 
+/// Authentic iOS Cupertino dialog for task cancellation reflection.
 Future<String?> showCancelReasonDialog({
   required BuildContext context,
   required TaskItem task,
 }) {
   final controller = CancelReasonController();
 
-  return showDialog<String>(
+  return showCupertinoDialog<String>(
     context: context,
     builder: (ctx) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final textSecondary =
+          isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
+
+      final inputBg = isDark
+          ? AppTheme.darkTertiaryGroupedBackground
+          : AppTheme.systemGray6Light;
+
       return StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Reflection: Why cancel?'),
-            content: SingleChildScrollView(
+          return CupertinoAlertDialog(
+            title: const Text('Why cancel this task?'),
+            content: Padding(
+              padding: const EdgeInsets.only(top: 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Task: "${task.title}"',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
+                    '"${task.title}"',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: textSecondary,
+                      letterSpacing: -0.1,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Select a reason:'),
-                  const SizedBox(height: 8),
+                  // Preset reason pills
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: CancelReasonController.presetReasons.map((preset) {
+                    spacing: 6,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.center,
+                    children:
+                        CancelReasonController.presetReasons.map((preset) {
                       final isSelected = controller.selectedPreset == preset;
-                      return ChoiceChip(
-                        label: Text(preset),
-                        selected: isSelected,
-                        onSelected: (selected) {
+                      final primaryColor = isDark
+                          ? AppTheme.darkSystemBlue
+                          : AppTheme.systemBlue;
+
+                      return GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
                           setState(() {
-                            controller.selectPreset(selected ? preset : null);
+                            controller.selectPreset(isSelected ? null : preset);
                           });
                         },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? primaryColor.withValues(alpha: 0.15)
+                                : inputBg,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? primaryColor
+                                  : Colors.transparent,
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            preset,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                              color: isSelected
+                                  ? primaryColor
+                                  : (isDark
+                                      ? AppTheme.darkLabelPrimary
+                                      : AppTheme.lightLabelPrimary),
+                            ),
+                          ),
+                        ),
                       );
                     }).toList(),
                   ),
                   const SizedBox(height: 12),
-                  TextField(
-                    decoration: const InputDecoration(
-                      labelText: 'Or enter custom reason',
-                      border: OutlineInputBorder(),
+                  CupertinoTextField(
+                    placeholder: 'Or enter custom reason...',
+                    placeholderStyle: TextStyle(
+                      color: textSecondary,
+                      fontSize: 13,
+                    ),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark
+                          ? AppTheme.darkLabelPrimary
+                          : AppTheme.lightLabelPrimary,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: inputBg,
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     onChanged: (text) {
                       controller.setCustomText(text);
@@ -104,15 +171,18 @@ Future<String?> showCancelReasonDialog({
               ),
             ),
             actions: [
-              TextButton(
+              CupertinoDialogAction(
+                isDestructiveAction: false,
                 onPressed: () => Navigator.of(ctx).pop(null),
                 child: const Text('Back'),
               ),
-              FilledButton(
+              CupertinoDialogAction(
+                isDestructiveAction: true,
                 onPressed: () {
+                  HapticFeedback.lightImpact();
                   Navigator.of(ctx).pop(controller.resolvedReason);
                 },
-                child: const Text('Confirm Cancel'),
+                child: const Text('Cancel Task'),
               ),
             ],
           );

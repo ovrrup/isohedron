@@ -53,7 +53,8 @@ void main() {
       expect(task.cancelReason, isNull);
     });
 
-    test('TaskItem.copyWith supports updating and clearing nullable fields', () {
+    test('TaskItem.copyWith supports updating and clearing nullable fields',
+        () {
       final task = TaskItem(
         id: 't-clear',
         taskListId: 'list-1',

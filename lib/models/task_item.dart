@@ -48,7 +48,8 @@ class TaskItem {
       plannedTime: clearPlannedTime ? null : (plannedTime ?? this.plannedTime),
       isCompleted: isCompleted ?? this.isCompleted,
       isCancelled: isCancelled ?? this.isCancelled,
-      cancelReason: clearCancelReason ? null : (cancelReason ?? this.cancelReason),
+      cancelReason:
+          clearCancelReason ? null : (cancelReason ?? this.cancelReason),
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }

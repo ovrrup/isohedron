@@ -47,6 +47,8 @@ class IsohedronAppController extends ChangeNotifier {
     );
   }
 
+  List<TaskItem> get allTasksForCurrentList => List.unmodifiable(_currentTasks);
+
   List<TaskItem> get visibleTasks {
     return storage.filterTasks(
       _currentTasks,
@@ -208,6 +210,24 @@ class IsohedronAppController extends ChangeNotifier {
 
     await storage.upsertTask(updated);
     await notifications.scheduleTaskReminder(updated);
+
+    await loadCurrentTasks();
+  }
+
+  Future<void> clearReminder(String taskId) async {
+    final task = _currentTasks.cast<TaskItem?>().firstWhere(
+          (t) => t?.id == taskId,
+          orElse: () => null,
+        );
+    if (task == null) return;
+
+    final updated = task.copyWith(
+      clearPlannedTime: true,
+      updatedAt: DateTime.now(),
+    );
+
+    await storage.upsertTask(updated);
+    await notifications.cancelReminder(taskId);
 
     await loadCurrentTasks();
   }

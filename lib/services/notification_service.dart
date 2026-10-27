@@ -53,12 +53,14 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
 
   static const String channelId = 'isohedron_reminders';
   static const String channelName = 'Task Reminders';
-  static const String channelDesc = 'Notifications for scheduled tasks and planned reminders';
+  static const String channelDesc =
+      'Notifications for scheduled tasks and planned reminders';
 
   @override
   Future<void> init() async {
     try {
-      const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+      const androidInit =
+          AndroidInitializationSettings('@drawable/ic_notification');
       const initSettings = InitializationSettings(android: androidInit);
       await _plugin.initialize(initSettings);
 
@@ -69,13 +71,16 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
         importance: Importance.high,
       );
 
-      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final androidImplementation =
+          _plugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
       await androidImplementation?.createNotificationChannel(androidChannel);
     } catch (_) {
       try {
-        const fallbackInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-        await _plugin.initialize(const InitializationSettings(android: fallbackInit));
+        const fallbackInit =
+            AndroidInitializationSettings('@mipmap/ic_launcher');
+        await _plugin
+            .initialize(const InitializationSettings(android: fallbackInit));
       } catch (_) {
         // Safe degradation: app continues functioning even if notifications cannot initialize
       }
@@ -85,9 +90,11 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
   @override
   Future<bool> requestPermissions() async {
     try {
-      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
-      final granted = await androidImplementation?.requestNotificationsPermission();
+      final androidImplementation =
+          _plugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      final granted =
+          await androidImplementation?.requestNotificationsPermission();
       return granted ?? true;
     } catch (_) {
       return false;

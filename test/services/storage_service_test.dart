@@ -137,7 +137,8 @@ void main() {
         due: DateTime.utc(now.year, now.month, now.day),
         updatedAt: now,
       );
-      final utcFiltered = storage.filterTasks([utcMidnightTask], TaskFilter.today);
+      final utcFiltered =
+          storage.filterTasks([utcMidnightTask], TaskFilter.today);
       expect(utcFiltered.length, 1);
 
       // Planned filter
@@ -173,7 +174,8 @@ void main() {
     test('creates and deletes task lists with cascade cleanup', () async {
       final created = await storage.createTaskList('Project Falcon');
       expect(created.title, 'Project Falcon');
-      expect((await storage.getTaskLists()).any((l) => l.id == created.id), isTrue);
+      expect((await storage.getTaskLists()).any((l) => l.id == created.id),
+          isTrue);
 
       final task = TaskItem(
         id: 'task-in-falcon',
@@ -185,7 +187,8 @@ void main() {
       expect((await storage.getTasks(created.id)).length, 1);
 
       await storage.deleteTaskList(created.id);
-      expect((await storage.getTaskLists()).any((l) => l.id == created.id), isFalse);
+      expect((await storage.getTaskLists()).any((l) => l.id == created.id),
+          isFalse);
       expect(await storage.getTasks(created.id), isEmpty);
     });
 

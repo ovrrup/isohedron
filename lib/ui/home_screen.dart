@@ -1,12 +1,21 @@
+// ignore_for_file: deprecated_member_use
+
+import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
 import '../models/task_filter.dart';
+import '../models/task_item.dart';
 import '../theme/app_theme.dart';
 import 'cancel_reason_dialog.dart';
 import 'onboarding_screen.dart';
 import 'plan_task_dialog.dart';
 import 'reflection_dialog.dart';
 import 'task_list_switcher.dart';
+import 'widgets/ios_reflection_banner.dart';
+import 'widgets/ios_segmented_filter.dart';
+import 'widgets/ios_task_cell.dart';
 import 'widgets/isohedron_logo.dart';
 
 export '../controllers/isohedron_app_controller.dart';
@@ -32,37 +41,93 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Map<TaskFilter, int> _computeFilterCounts() {
+    final allTasks = controller.allTasksForCurrentList;
+    final now = DateTime.now();
+
+    final todayTasks = allTasks.where((TaskItem t) {
+      if (t.isCompleted || t.isCancelled) return false;
+      if (t.plannedTime == null) return false;
+      final local = t.plannedTime!.toLocal();
+      return local.year == now.year &&
+          local.month == now.month &&
+          local.day == now.day;
+    }).length;
+
+    final plannedTasks = allTasks.where((TaskItem t) {
+      return !t.isCompleted && !t.isCancelled && t.plannedTime != null;
+    }).length;
+
+    final completedTasks = allTasks.where((TaskItem t) => t.isCompleted).length;
+    final cancelledTasks = allTasks.where((TaskItem t) => t.isCancelled).length;
+
+    return {
+      TaskFilter.all: allTasks.length,
+      TaskFilter.today: todayTasks,
+      TaskFilter.planned: plannedTasks,
+      TaskFilter.completed: completedTasks,
+      TaskFilter.cancelled: cancelledTasks,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final scaffoldBg = isDark
+        ? AppTheme.darkSystemGroupedBackground
+        : AppTheme.lightSystemGroupedBackground;
+
+    final secondaryBg = isDark
+        ? AppTheme.darkSecondaryGroupedBackground
+        : AppTheme.lightSecondaryGroupedBackground;
+
+    final textPrimary =
+        isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
+
+    final textSecondary =
+        isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
+
+    final systemBlue = isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue;
+    final separatorColor =
+        isDark ? AppTheme.darkSeparator : AppTheme.lightSeparator;
 
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
         final visibleTasks = controller.visibleTasks;
         final overdueTasks = controller.overdueTasks;
+        final filterCounts = _computeFilterCounts();
 
         return Scaffold(
+          backgroundColor: scaffoldBg,
           appBar: AppBar(
-            title: Row(
-              children: [
-                const IsohedronLogo(size: 26),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TaskListSwitcherDropdown(
-                    availableLists: controller.taskLists,
-                    selectedListId: controller.selectedListId,
-                    onListSelected: (id) async {
-                      await controller.switchList(id);
-                    },
-                  ),
-                ),
-              ],
+            backgroundColor: scaffoldBg,
+            scrolledUnderElevation: 0,
+            elevation: 0,
+            leadingWidth: 44,
+            leading: const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Center(
+                child: IsohedronLogo(size: 24),
+              ),
             ),
+            title: TaskListSwitcherDropdown(
+              availableLists: controller.taskLists,
+              selectedListId: controller.selectedListId,
+              onListSelected: (id) async {
+                await controller.switchList(id);
+              },
+            ),
+            centerTitle: true,
             actions: [
-              IconButton(
-                icon: Icon(_searchOpen ? Icons.close : Icons.search),
+              // Search toggle
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minSize: 36,
                 onPressed: () {
+                  HapticFeedback.selectionClick();
                   setState(() {
                     _searchOpen = !_searchOpen;
                     if (!_searchOpen) {
@@ -71,387 +136,196 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   });
                 },
+                child: Icon(
+                  _searchOpen
+                      ? CupertinoIcons.xmark_circle_fill
+                      : CupertinoIcons.search,
+                  color: systemBlue,
+                  size: 20,
+                ),
               ),
-              IconButton(
-                icon: const Icon(Icons.info_outline_rounded),
-                tooltip: 'About Isohedron',
-                onPressed: () => _showAboutDialog(context),
+              // About Isohedron Info button
+              CupertinoButton(
+                padding: const EdgeInsets.only(right: 16, left: 4),
+                minSize: 36,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _showAboutDialog(context);
+                },
+                child: Icon(
+                  CupertinoIcons.info_circle,
+                  color: systemBlue,
+                  size: 22,
+                ),
               ),
             ],
           ),
           body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // iOS Large Title Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      controller.currentList.title,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '(${visibleTasks.length})',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // iOS Search Field
               if (_searchOpen)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: TextField(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: CupertinoSearchTextField(
                     controller: _searchController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search tasks...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (text) {
-                      controller.setSearchQuery(text);
+                    placeholder: 'Search reminders',
+                    style: TextStyle(color: textPrimary, fontSize: 14),
+                    onChanged: (text) => controller.setSearchQuery(text),
+                    onSuffixTap: () {
+                      _searchController.clear();
+                      controller.setSearchQuery('');
                     },
                   ),
                 ),
 
-              // Reflection Loop Banner for Missed/Overdue Tasks
+              // Cupertino Sliding Segmented Filter Control
+              IosSegmentedFilter(
+                currentFilter: controller.currentFilter,
+                counts: filterCounts,
+                onFilterChanged: (filter) {
+                  controller.setFilter(filter);
+                },
+              ),
+
+              // Reflection Loop Callout Banner for Overdue Tasks
               if (overdueTasks.isNotEmpty &&
                   controller.currentFilter != TaskFilter.completed &&
                   controller.currentFilter != TaskFilter.cancelled)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.accent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.accent.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accent.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.autorenew_rounded,
-                            color: AppTheme.accent,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${overdueTasks.length} task(s) awaiting reflection',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.brightness == Brightness.dark
-                                      ? AppTheme.darkAccent
-                                      : const Color(0xFF5E0B12),
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                'A gentle pause to reschedule or let go',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: theme.brightness == Brightness.dark
-                                      ? AppTheme.darkTextSecondary
-                                      : const Color(0xFF7A1C24),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.accent,
-                            foregroundColor: Colors.white,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                          ),
-                          onPressed: () async {
-                            final first = overdueTasks.first;
-                            final res = await showReflectionDialog(
-                              context: context,
-                              task: first,
-                            );
-                            if (res != null) {
-                              if (res.action == ReflectionAction.complete) {
-                                await controller.completeTask(first.id);
-                              } else if (res.action ==
-                                  ReflectionAction.cancel) {
-                                await controller.cancelTask(
-                                  first.id,
-                                  reason: res.cancelReason ?? 'Skipped',
-                                );
-                              } else if (res.action ==
-                                      ReflectionAction.reschedule &&
-                                  res.newPlannedTime != null) {
-                                await controller.rescheduleTask(
-                                  first.id,
-                                  res.newPlannedTime!,
-                                );
-                              }
-                            }
-                          },
-                          child: const Text(
-                            'Reflect',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                IosReflectionBanner(
+                  overdueTasks: overdueTasks,
+                  onReflect: () async {
+                    final first = overdueTasks.first;
+                    final res = await showReflectionDialog(
+                      context: context,
+                      task: first,
+                    );
+                    if (res != null) {
+                      if (res.action == ReflectionAction.complete) {
+                        await controller.completeTask(first.id);
+                      } else if (res.action == ReflectionAction.cancel) {
+                        await controller.cancelTask(
+                          first.id,
+                          reason: res.cancelReason ?? 'Skipped',
+                        );
+                      } else if (res.action == ReflectionAction.reschedule &&
+                          res.newPlannedTime != null) {
+                        await controller.rescheduleTask(
+                          first.id,
+                          res.newPlannedTime!,
+                        );
+                      }
+                    }
+                  },
                 ),
 
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedButton<TaskFilter>(
-                    segments: const [
-                      ButtonSegment(value: TaskFilter.all, label: Text('All')),
-                      ButtonSegment(
-                        value: TaskFilter.today,
-                        label: Text('Today'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.planned,
-                        label: Text('Planned'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.completed,
-                        label: Text('Done'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.cancelled,
-                        label: Text('Cancelled'),
-                      ),
-                    ],
-                    selected: {controller.currentFilter},
-                    onSelectionChanged: (selected) {
-                      controller.setFilter(selected.first);
-                    },
-                  ),
-                ),
-              ),
+              const SizedBox(height: 4),
+
+              // Grouped Inset Task List Container
               Expanded(
                 child: visibleTasks.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Opacity(
-                              opacity: 0.5,
-                              child: IsohedronLogo(size: 72),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              'Sanctuary is Clear',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                            Opacity(
+                              opacity: 0.35,
+                              child: Icon(
+                                CupertinoIcons.tray,
+                                size: 56,
+                                color: textSecondary,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 14),
                             Text(
-                              'Tap + below to set your next intention',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.outline,
+                              'No Reminders',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.3,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tap "New Reminder" below to create one',
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: -0.1,
+                                color: textSecondary,
                               ),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: visibleTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = visibleTasks[index];
-                          final isOverdue = !task.isCompleted &&
-                              !task.isCancelled &&
-                              task.plannedTime != null &&
-                              task.plannedTime!.isBefore(DateTime.now());
-
-                          return Dismissible(
-                            key: ValueKey(task.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              color: theme.colorScheme.errorContainer,
-                              alignment: Alignment.centerRight,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: Icon(
-                                Icons.cancel_outlined,
-                                color: theme.colorScheme.onErrorContainer,
-                              ),
+                    : ListView(
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                        children: [
+                          Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: secondaryBg,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            confirmDismiss: (direction) async {
-                              final reason = await showCancelReasonDialog(
-                                context: context,
-                                task: task,
-                              );
-                              if (reason != null) {
-                                await controller.cancelTask(
-                                  task.id,
-                                  reason: reason,
-                                );
-                                return false;
-                              }
-                              return false;
-                            },
-                            child: Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              elevation: 0.5,
-                              child: ListTile(
-                                leading: Checkbox(
-                                  value: task.isCompleted,
-                                  onChanged: (checked) async {
-                                    if (checked == true) {
-                                      await controller.completeTask(task.id);
-                                    } else {
-                                      await controller.reopenTask(task.id);
-                                    }
-                                  },
-                                ),
-                                title: Text(
-                                  task.title,
-                                  style: TextStyle(
-                                    decoration: task.isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    color: task.isCompleted
-                                        ? theme.colorScheme.outline
-                                        : theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (task.notes != null &&
-                                        task.notes!.isNotEmpty)
-                                      Text(
-                                        task.notes!,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: [
-                                        if (task.plannedTime != null)
-                                          ActionChip(
-                                            avatar: Icon(
-                                              isOverdue
-                                                  ? Icons.warning_amber
-                                                  : Icons.alarm,
-                                              size: 14,
-                                              color: isOverdue
-                                                  ? theme.colorScheme.error
-                                                  : null,
-                                            ),
-                                            label: Text(
-                                              isOverdue
-                                                  ? 'Missed: ${task.plannedTime!.toLocal().month}/${task.plannedTime!.toLocal().day} ${task.plannedTime!.toLocal().hour}:${task.plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
-                                                  : 'Planned: ${task.plannedTime!.toLocal().month}/${task.plannedTime!.toLocal().day} ${task.plannedTime!.toLocal().hour}:${task.plannedTime!.toLocal().minute.toString().padLeft(2, '0')}',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isOverdue
-                                                    ? theme.colorScheme.error
-                                                    : null,
-                                              ),
-                                            ),
-                                            backgroundColor: isOverdue
-                                                ? theme
-                                                    .colorScheme.errorContainer
-                                                    .withValues(alpha: 0.3)
-                                                : null,
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                            padding: EdgeInsets.zero,
-                                            onPressed: () async {
-                                              final res =
-                                                  await showReflectionDialog(
-                                                context: context,
-                                                task: task,
-                                              );
-                                              if (res != null) {
-                                                if (res.action ==
-                                                    ReflectionAction.complete) {
-                                                  await controller
-                                                      .completeTask(task.id);
-                                                } else if (res.action ==
-                                                    ReflectionAction.cancel) {
-                                                  await controller.cancelTask(
-                                                    task.id,
-                                                    reason: res.cancelReason ??
-                                                        'Skipped',
-                                                  );
-                                                } else if (res.action ==
-                                                        ReflectionAction
-                                                            .reschedule &&
-                                                    res.newPlannedTime !=
-                                                        null) {
-                                                  await controller
-                                                      .rescheduleTask(
-                                                    task.id,
-                                                    res.newPlannedTime!,
-                                                  );
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        if (task.isCancelled &&
-                                            task.cancelReason != null)
-                                          Chip(
-                                            avatar: Icon(
-                                              Icons.info_outline,
-                                              size: 14,
-                                              color: theme.colorScheme.error,
-                                            ),
-                                            label: Text(
-                                              task.cancelReason!,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: theme.colorScheme.error,
-                                              ),
-                                            ),
-                                            backgroundColor: theme
-                                                .colorScheme.errorContainer
-                                                .withValues(alpha: 0.5),
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                            padding: EdgeInsets.zero,
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: PopupMenuButton<String>(
-                                  onSelected: (val) async {
-                                    if (val == 'reflect') {
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < visibleTasks.length; i++)
+                                  IosTaskCell(
+                                    task: visibleTasks[i],
+                                    showDivider: i < visibleTasks.length - 1,
+                                    onToggleComplete: (t) async {
+                                      if (t.isCompleted) {
+                                        await controller.reopenTask(t.id);
+                                      } else {
+                                        await controller.completeTask(t.id);
+                                      }
+                                    },
+                                    onReflect: (t) async {
                                       final res = await showReflectionDialog(
                                         context: context,
-                                        task: task,
+                                        task: t,
                                       );
                                       if (res != null) {
                                         if (res.action ==
                                             ReflectionAction.complete) {
-                                          await controller
-                                              .completeTask(task.id);
+                                          await controller.completeTask(t.id);
                                         } else if (res.action ==
                                             ReflectionAction.cancel) {
                                           await controller.cancelTask(
-                                            task.id,
+                                            t.id,
                                             reason:
                                                 res.cancelReason ?? 'Skipped',
                                           );
@@ -459,97 +333,180 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ReflectionAction.reschedule &&
                                             res.newPlannedTime != null) {
                                           await controller.rescheduleTask(
-                                            task.id,
+                                            t.id,
                                             res.newPlannedTime!,
                                           );
                                         }
                                       }
-                                    } else if (val == 'plan') {
+                                    },
+                                    onReschedule: (t) async {
                                       final planned = await showPlanTaskDialog(
                                         context: context,
-                                        initialTime: task.plannedTime,
+                                        initialTime: t.plannedTime,
                                       );
-                                      if (planned != null) {
+                                      if (planned ==
+                                          PlanTaskHelper
+                                              .clearReminderSentinel) {
+                                        await controller.clearReminder(t.id);
+                                      } else if (planned != null) {
                                         await controller.rescheduleTask(
-                                          task.id,
+                                          t.id,
                                           planned,
                                         );
                                       }
-                                    } else if (val == 'cancel') {
+                                    },
+                                    onCancel: (t) async {
                                       final reason =
                                           await showCancelReasonDialog(
                                         context: context,
-                                        task: task,
+                                        task: t,
                                       );
                                       if (reason != null) {
                                         await controller.cancelTask(
-                                          task.id,
+                                          t.id,
                                           reason: reason,
                                         );
                                       }
-                                    } else if (val == 'delete') {
-                                      await controller.deleteTask(task.id);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'reflect',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.psychology_outlined,
-                                              size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Reflect on Task'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'plan',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.alarm_add, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Set Reminder'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'cancel',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.cancel_outlined, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Cancel with Reason'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete_outline, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Delete'),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                                    },
+                                    onDelete: (t) async {
+                                      await controller.deleteTask(t.id);
+                                    },
+                                  ),
+                              ],
                             ),
-                          );
-                        },
+                          ),
+                        ],
                       ),
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            icon: const Icon(Icons.add),
-            label: const Text('New Task'),
-            onPressed: () => _showCreateTaskDialog(context),
+
+          // Authentic iOS Bottom Action Bar (replacing Android FAB)
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: secondaryBg,
+              border: Border(
+                top: BorderSide(
+                  color: separatorColor,
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minSize: 38,
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _showCreateTaskSheet(context);
+                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.plus_circle_fill,
+                            color: systemBlue,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'New Reminder',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: systemBlue,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minSize: 38,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _showListSwitcherActionSheet(context);
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            controller.currentList.title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: textSecondary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            CupertinoIcons.list_bullet,
+                            color: textSecondary,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
+    );
+  }
+
+  void _showListSwitcherActionSheet(BuildContext context) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Switch Task List'),
+        actions: controller.taskLists.map((list) {
+          final isSelected = list.id == controller.selectedListId;
+          return CupertinoActionSheetAction(
+            onPressed: () async {
+              unawaited(HapticFeedback.lightImpact());
+              Navigator.of(ctx).pop();
+              if (!isSelected) {
+                await controller.switchList(list.id);
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  CupertinoIcons.folder,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  list.title,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 8),
+                  const Icon(CupertinoIcons.checkmark, size: 16),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 
@@ -562,89 +519,211 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showCreateTaskDialog(BuildContext context) {
+  /// Authentic iOS modal sheet for quick reminder creation
+  void _showCreateTaskSheet(BuildContext context) {
     final titleController = TextEditingController();
     final notesController = TextEditingController();
     DateTime? plannedTime;
 
-    showModalBottomSheet<void>(
+    showCupertinoModalPopup<void>(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final sheetBg = isDark
+            ? AppTheme.darkSecondaryGroupedBackground
+            : AppTheme.lightSecondaryGroupedBackground;
+
+        final inputBg = isDark
+            ? AppTheme.darkTertiaryGroupedBackground
+            : AppTheme.systemGray6Light;
+
+        final textPrimary =
+            isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
+
+        final textSecondary =
+            isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
+
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Task in ${controller.currentList.title}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Task title',
-                      border: OutlineInputBorder(),
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: sheetBg,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.alarm, size: 16),
-                        label: Text(
-                          plannedTime != null
-                              ? 'Planned: ${plannedTime!.toLocal().month}/${plannedTime!.toLocal().day} ${plannedTime!.toLocal().hour}:${plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
-                              : 'Set Reminder',
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // iOS Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            Text(
+                              'New Reminder',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.3,
+                                color: textPrimary,
+                              ),
+                            ),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () async {
+                                final title = titleController.text.trim();
+                                if (title.isNotEmpty) {
+                                  unawaited(HapticFeedback.lightImpact());
+                                  await controller.createTask(
+                                    title: title,
+                                    notes:
+                                        notesController.text.trim().isNotEmpty
+                                            ? notesController.text.trim()
+                                            : null,
+                                    plannedTime: plannedTime,
+                                  );
+                                  if (ctx.mounted) Navigator.of(ctx).pop();
+                                }
+                              },
+                              child: const Text(
+                                'Add',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () async {
-                          final selected =
-                              await showPlanTaskDialog(context: context);
-                          if (selected != null) {
-                            setModalState(() {
-                              plannedTime = selected;
-                            });
-                          }
-                        },
-                      ),
-                      const Spacer(),
-                      FilledButton(
-                        onPressed: () async {
-                          final title = titleController.text.trim();
-                          if (title.isNotEmpty) {
-                            await controller.createTask(
-                              title: title,
-                              notes: notesController.text.trim().isNotEmpty
-                                  ? notesController.text.trim()
-                                  : null,
-                              plannedTime: plannedTime,
+                        const SizedBox(height: 12),
+
+                        // Input Group
+                        Container(
+                          decoration: BoxDecoration(
+                            color: inputBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            children: [
+                              CupertinoTextField(
+                                controller: titleController,
+                                autofocus: true,
+                                placeholder: 'Title',
+                                placeholderStyle: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 15,
+                                ),
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 15,
+                                ),
+                                decoration: const BoxDecoration(),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                              ),
+                              const Divider(height: 12, thickness: 0.5),
+                              CupertinoTextField(
+                                controller: notesController,
+                                placeholder: 'Notes',
+                                placeholderStyle: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 14,
+                                ),
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 14,
+                                ),
+                                decoration: const BoxDecoration(),
+                                maxLines: 2,
+                                minLines: 1,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Date & Time reminder button
+                        GestureDetector(
+                          onTap: () async {
+                            unawaited(HapticFeedback.selectionClick());
+                            final selected = await showPlanTaskDialog(
+                              context: context,
+                              initialTime: plannedTime,
                             );
-                            if (ctx.mounted) Navigator.of(ctx).pop();
-                          }
-                        },
-                        child: const Text('Add Task'),
-                      ),
-                    ],
+                            if (selected != null) {
+                              setModalState(() {
+                                plannedTime = selected;
+                              });
+                            }
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: inputBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.alarm,
+                                  size: 18,
+                                  color: plannedTime != null
+                                      ? (isDark
+                                          ? AppTheme.darkSystemBlue
+                                          : AppTheme.systemBlue)
+                                      : textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    plannedTime != null
+                                        ? '${plannedTime!.toLocal().month}/${plannedTime!.toLocal().day} at ${plannedTime!.toLocal().hour}:${plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
+                                        : 'Set Date & Time',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: plannedTime != null
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: plannedTime != null
+                                          ? textPrimary
+                                          : textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  CupertinoIcons.chevron_right,
+                                  size: 14,
+                                  color: textSecondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             );
           },

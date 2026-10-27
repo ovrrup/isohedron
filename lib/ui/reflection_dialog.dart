@@ -1,5 +1,9 @@
+import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/task_item.dart';
+import '../theme/app_theme.dart';
 import 'cancel_reason_dialog.dart';
 import 'plan_task_dialog.dart';
 
@@ -24,85 +28,123 @@ class ReflectionResult {
         newPlannedTime = null;
 }
 
+/// Authentic iOS Cupertino action sheet for task reflection loop.
 Future<ReflectionResult?> showReflectionDialog({
   required BuildContext context,
   required TaskItem task,
 }) {
-  return showDialog<ReflectionResult>(
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final planned = task.plannedTime?.toLocal();
+
+  String message =
+      '"${task.title}"\nPlans change, and that is okay. Choose what you would like to do:';
+  if (planned != null) {
+    message =
+        '"${task.title}"\nWas planned for ${planned.month}/${planned.day} at ${planned.hour}:${planned.minute.toString().padLeft(2, '0')}.\nChoose how you would like to proceed:';
+  }
+
+  return showCupertinoModalPopup<ReflectionResult>(
     context: context,
     builder: (ctx) {
-      final theme = Theme.of(context);
-      final planned = task.plannedTime?.toLocal();
-
-      return AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.psychology_alt_outlined, color: theme.colorScheme.primary),
-            const SizedBox(width: 8),
-            const Text('Task Reflection'),
-          ],
+      return CupertinoActionSheet(
+        title: const Text(
+          'Task Reflection',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              task.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (planned != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Was planned for: ${planned.month}/${planned.day} at ${planned.hour}:${planned.minute.toString().padLeft(2, '0')}',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            const Text(
-              'Plans change, and that is okay. Choose what you would like to do with this task:',
-              style: TextStyle(fontSize: 13),
-            ),
-          ],
+        message: Text(
+          message,
+          style: const TextStyle(fontSize: 13),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(null),
-            child: const Text('Later'),
-          ),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.cancel_outlined, size: 16),
-            label: const Text('Cancel & Reflect'),
+          // Reschedule Action
+          CupertinoActionSheetAction(
             onPressed: () async {
+              unawaited(HapticFeedback.lightImpact());
+              final selected = await showPlanTaskDialog(
+                context: context,
+                initialTime: task.plannedTime,
+              );
+              if (ctx.mounted) {
+                if (selected != null) {
+                  Navigator.of(ctx).pop(ReflectionResult.reschedule(selected));
+                } else {
+                  Navigator.of(ctx).pop(null);
+                }
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.clock,
+                  size: 18,
+                  color: isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue,
+                ),
+                const SizedBox(width: 8),
+                const Text('Reschedule'),
+              ],
+            ),
+          ),
+
+          // Mark Done Action
+          CupertinoActionSheetAction(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.of(ctx).pop(const ReflectionResult.complete());
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  CupertinoIcons.checkmark_circle,
+                  size: 18,
+                  color:
+                      isDark ? AppTheme.darkSystemGreen : AppTheme.systemGreen,
+                ),
+                const SizedBox(width: 8),
+                const Text('Mark Done'),
+              ],
+            ),
+          ),
+
+          // Cancel & Reflect Action
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () async {
+              unawaited(HapticFeedback.lightImpact());
               final reason = await showCancelReasonDialog(
                 context: context,
                 task: task,
               );
-              if (reason != null && ctx.mounted) {
-                Navigator.of(ctx).pop(ReflectionResult.cancel(reason));
+              if (ctx.mounted) {
+                if (reason != null) {
+                  Navigator.of(ctx).pop(ReflectionResult.cancel(reason));
+                } else {
+                  Navigator.of(ctx).pop(null);
+                }
               }
             },
-          ),
-          FilledButton.tonalIcon(
-            icon: const Icon(Icons.check, size: 16),
-            label: const Text('Mark Done'),
-            onPressed: () =>
-                Navigator.of(ctx).pop(const ReflectionResult.complete()),
-          ),
-          FilledButton.icon(
-            icon: const Icon(Icons.schedule, size: 16),
-            label: const Text('Reschedule'),
-            onPressed: () async {
-              final selected = await showPlanTaskDialog(context: context);
-              if (selected != null && ctx.mounted) {
-                Navigator.of(ctx).pop(ReflectionResult.reschedule(selected));
-              }
-            },
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(CupertinoIcons.xmark_circle, size: 18),
+                SizedBox(width: 8),
+                Text('Cancel & Reflect'),
+              ],
+            ),
           ),
         ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () {
+            Navigator.of(ctx).pop(null);
+          },
+          child: const Text('Later'),
+        ),
       );
     },
   );
