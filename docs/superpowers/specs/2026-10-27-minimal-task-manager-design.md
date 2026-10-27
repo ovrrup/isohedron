@@ -10,13 +10,15 @@
 ## 1. Intent and Why
 
 Most to-do apps suffer from two major drop-off points:
-1. **Cold start friction:** Setting up tasks from scratch in a new app feels tedious.
+1. **Cold start friction & lock-in:** Users either struggle without sync across devices, or are forced into heavy proprietary cloud accounts.
 2. **Lack of follow-through & accountability:** Tasks get scheduled or forgotten, and when skipped, there is zero reflection on *why* they were missed.
 
-This app solves both:
-* **The Hook:** Direct integration with **Google Tasks**, allowing users to immediately bring in their existing to-do lists without configuring a custom cloud backend.
+### Product Identity: Isohedron Tasks
+This application has its **own standalone identity** as an autonomous, frictionless, local-first task manager:
+* **Standalone First:** Out of the box, it is a fully functional, zero-friction task planner. It creates, plans, alerts, and reflects on tasks completely locally—no account required.
+* **Google Tasks as an Integration Layer:** Google Tasks is an optional sync bridge so users don't have to struggle with multi-device sync and can take advantage of Google ecosystem features (e.g. Google Assistant, Calendar) without making the app dependent on Google services to function.
 * **The Core Loop:** Users plan a specific time for their tasks. When the time comes, the app delivers a scheduled local notification.
-* **The Reflection Loop:** When a task is completed, it syncs as done. If the user marks it as cancelled / not done, the app prompts for the reason and records it directly into the task's notes/history, providing actionable insight into why tasks fail.
+* **The Reflection Loop:** When a task is completed, it marks done. If the user marks it as cancelled / not done, the app prompts for the reason and records it directly into the task's notes/history, providing actionable insight into why tasks fail.
 
 ---
 
