@@ -21,15 +21,27 @@ abstract class GoogleTasksClient {
 }
 
 class GoogleAuthClient extends http.BaseClient {
-  final Map<String, String> _headers;
+  final Map<String, String>? _fixedHeaders;
+  final Future<Map<String, String>> Function()? _headerProvider;
   final http.Client _client;
 
-  GoogleAuthClient(this._headers, [http.Client? client])
-      : _client = client ?? http.Client();
+  GoogleAuthClient(this._fixedHeaders, [http.Client? client])
+      : _headerProvider = null,
+        _client = client ?? http.Client();
+
+  GoogleAuthClient.dynamic(this._headerProvider, [http.Client? client])
+      : _fixedHeaders = null,
+        _client = client ?? http.Client();
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) {
-    return _client.send(request..headers.addAll(_headers));
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (_fixedHeaders != null) {
+      request.headers.addAll(_fixedHeaders!);
+    } else if (_headerProvider != null) {
+      final headers = await _headerProvider!();
+      request.headers.addAll(headers);
+    }
+    return _client.send(request);
   }
 }
 
@@ -145,16 +157,21 @@ class MockGoogleTasksClient implements GoogleTasksClient {
 }
 
 class LiveGoogleTasksClient implements GoogleTasksClient {
+  static const String defaultClientId =
+      '123682783046-oitk011evt0thq64jvoluja61rl97nhv.apps.googleusercontent.com';
+
   final GoogleSignIn _googleSignIn;
   gtasks.TasksApi? _tasksApi;
   String? _userEmail;
   String? _lastError;
 
-  LiveGoogleTasksClient({GoogleSignIn? googleSignIn})
+  LiveGoogleTasksClient({GoogleSignIn? googleSignIn, String? clientId})
       : _googleSignIn = googleSignIn ??
             GoogleSignIn(
+              clientId: clientId ?? defaultClientId,
               scopes: [
                 'https://www.googleapis.com/auth/tasks',
+                'email',
               ],
             );
 
@@ -176,8 +193,7 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
         _lastError = 'Sign in was cancelled.';
         return false;
       }
-      final auth = await account.authHeaders;
-      final authClient = GoogleAuthClient(auth);
+      final authClient = GoogleAuthClient.dynamic(() => account.authHeaders);
       _tasksApi = gtasks.TasksApi(authClient);
       _userEmail = account.email;
       return true;
@@ -193,8 +209,7 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
     try {
       final account = await _googleSignIn.signInSilently();
       if (account == null) return false;
-      final auth = await account.authHeaders;
-      final authClient = GoogleAuthClient(auth);
+      final authClient = GoogleAuthClient.dynamic(() => account.authHeaders);
       _tasksApi = gtasks.TasksApi(authClient);
       _userEmail = account.email;
       return true;
@@ -349,9 +364,15 @@ class GoogleTasksService {
   GoogleTasksService({GoogleTasksClient? client})
       : _client = client ?? LiveGoogleTasksClient();
 
-  factory GoogleTasksService.live([GoogleSignIn? googleSignIn]) =>
+  factory GoogleTasksService.live([
+    GoogleSignIn? googleSignIn,
+    String? clientId,
+  ]) =>
       GoogleTasksService(
-        client: LiveGoogleTasksClient(googleSignIn: googleSignIn),
+        client: LiveGoogleTasksClient(
+          googleSignIn: googleSignIn,
+          clientId: clientId,
+        ),
       );
 
   factory GoogleTasksService.mock({
