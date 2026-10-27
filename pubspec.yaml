@@ -1,0 +1,16 @@
+name: isohedron
+description: "Minimal task manager with Google Tasks integration and reflection loop."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  intl: ^0.19.0
+  googleapis: ^13.2.0
+  http: ^1.2.0
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.24.0
