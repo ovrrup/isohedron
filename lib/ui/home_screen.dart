@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
@@ -8,6 +9,8 @@ import 'onboarding_screen.dart';
 import 'plan_task_dialog.dart';
 import 'reflection_dialog.dart';
 import 'task_list_switcher.dart';
+import 'widgets/ios_reflection_banner.dart';
+import 'widgets/ios_segmented_filter.dart';
 import 'widgets/ios_task_cell.dart';
 import 'widgets/isohedron_logo.dart';
 
@@ -34,37 +37,93 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Map<TaskFilter, int> _computeFilterCounts() {
+    final allTasks = controller.allTasksForCurrentList;
+    final now = DateTime.now();
+
+    final todayTasks = allTasks.where((t) {
+      if (t.isCompleted || t.isCancelled) return false;
+      if (t.plannedTime == null) return false;
+      final local = t.plannedTime!.toLocal();
+      return local.year == now.year &&
+          local.month == now.month &&
+          local.day == now.day;
+    }).length;
+
+    final plannedTasks = allTasks.where((t) {
+      return !t.isCompleted && !t.isCancelled && t.plannedTime != null;
+    }).length;
+
+    final completedTasks = allTasks.where((t) => t.isCompleted).length;
+    final cancelledTasks = allTasks.where((t) => t.isCancelled).length;
+
+    return {
+      TaskFilter.all: allTasks.length,
+      TaskFilter.today: todayTasks,
+      TaskFilter.planned: plannedTasks,
+      TaskFilter.completed: completedTasks,
+      TaskFilter.cancelled: cancelledTasks,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final scaffoldBg = isDark
+        ? AppTheme.darkSystemGroupedBackground
+        : AppTheme.lightSystemGroupedBackground;
+
+    final secondaryBg = isDark
+        ? AppTheme.darkSecondaryGroupedBackground
+        : AppTheme.lightSecondaryGroupedBackground;
+
+    final textPrimary =
+        isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
+
+    final textSecondary =
+        isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
+
+    final systemBlue = isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue;
+    final separatorColor =
+        isDark ? AppTheme.darkSeparator : AppTheme.lightSeparator;
 
     return ListenableBuilder(
       listenable: controller,
       builder: (context, _) {
         final visibleTasks = controller.visibleTasks;
         final overdueTasks = controller.overdueTasks;
+        final filterCounts = _computeFilterCounts();
 
         return Scaffold(
+          backgroundColor: scaffoldBg,
           appBar: AppBar(
-            title: Row(
-              children: [
-                const IsohedronLogo(size: 26),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TaskListSwitcherDropdown(
-                    availableLists: controller.taskLists,
-                    selectedListId: controller.selectedListId,
-                    onListSelected: (id) async {
-                      await controller.switchList(id);
-                    },
-                  ),
-                ),
-              ],
+            backgroundColor: scaffoldBg,
+            scrolledUnderElevation: 0,
+            elevation: 0,
+            leadingWidth: 44,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: const Center(
+                child: IsohedronLogo(size: 24),
+              ),
             ),
+            title: TaskListSwitcherDropdown(
+              availableLists: controller.taskLists,
+              selectedListId: controller.selectedListId,
+              onListSelected: (id) async {
+                await controller.switchList(id);
+              },
+            ),
+            centerTitle: true,
             actions: [
-              IconButton(
-                icon: Icon(_searchOpen ? Icons.close : Icons.search),
+              // Search toggle
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minSize: 36,
                 onPressed: () {
+                  HapticFeedback.selectionClick();
                   setState(() {
                     _searchOpen = !_searchOpen;
                     if (!_searchOpen) {
@@ -73,309 +132,400 @@ class _HomeScreenState extends State<HomeScreen> {
                     }
                   });
                 },
+                child: Icon(
+                  _searchOpen
+                      ? CupertinoIcons.xmark_circle_fill
+                      : CupertinoIcons.search,
+                  color: systemBlue,
+                  size: 20,
+                ),
               ),
+
+              // Sync Google Tasks (if applicable)
               if (controller.isGoogleConnected &&
                   !controller.currentList.isLocal)
-                IconButton(
-                  icon: controller.isSyncing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.sync),
-                  tooltip: 'Sync Google Tasks',
+                CupertinoButton(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  minSize: 36,
                   onPressed: controller.isSyncing
                       ? null
                       : () async {
+                          HapticFeedback.lightImpact();
                           await controller.syncCurrentList();
                         },
+                  child: controller.isSyncing
+                      ? const CupertinoActivityIndicator(radius: 8)
+                      : Icon(
+                          CupertinoIcons.arrow_2_circlepath,
+                          color: systemBlue,
+                          size: 20,
+                        ),
                 ),
-              IconButton(
-                icon: Icon(
+
+              // Account & Sync options
+              CupertinoButton(
+                padding: const EdgeInsets.only(right: 16, left: 4),
+                minSize: 36,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  _showAccountDialog(context);
+                },
+                child: Icon(
                   controller.isGoogleConnected
-                      ? Icons.account_circle
-                      : Icons.cloud_off_outlined,
+                      ? CupertinoIcons.person_crop_circle_fill
+                      : CupertinoIcons.person_crop_circle,
+                  color:
+                      controller.isGoogleConnected ? systemBlue : textSecondary,
+                  size: 22,
                 ),
-                tooltip: controller.isGoogleConnected
-                    ? 'Connected: ${controller.googleEmail}'
-                    : 'Connect Google Tasks',
-                onPressed: () => _showAccountDialog(context),
               ),
             ],
           ),
           body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // iOS Large Title Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      controller.currentList.title,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.4,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '(${visibleTasks.length})',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
+                        color: textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // iOS Search Field
               if (_searchOpen)
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: TextField(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: CupertinoSearchTextField(
                     controller: _searchController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search tasks...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (text) {
-                      controller.setSearchQuery(text);
+                    placeholder: 'Search reminders',
+                    style: TextStyle(color: textPrimary, fontSize: 14),
+                    onChanged: (text) => controller.setSearchQuery(text),
+                    onSuffixTap: () {
+                      _searchController.clear();
+                      controller.setSearchQuery('');
                     },
                   ),
                 ),
 
-              // Reflection Loop Banner for Missed/Overdue Tasks
+              // Cupertino Sliding Segmented Filter Control
+              IosSegmentedFilter(
+                currentFilter: controller.currentFilter,
+                counts: filterCounts,
+                onFilterChanged: (filter) {
+                  controller.setFilter(filter);
+                },
+              ),
+
+              // Reflection Loop Callout Banner for Overdue Tasks
               if (overdueTasks.isNotEmpty &&
                   controller.currentFilter != TaskFilter.completed &&
                   controller.currentFilter != TaskFilter.cancelled)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.accent.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.accent.withValues(alpha: 0.35),
-                        width: 1.5,
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accent.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.autorenew_rounded,
-                            color: AppTheme.accent,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${overdueTasks.length} task(s) awaiting reflection',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: theme.brightness == Brightness.dark
-                                      ? AppTheme.darkAccent
-                                      : const Color(0xFF5E0B12),
-                                ),
-                              ),
-                              const SizedBox(height: 1),
-                              Text(
-                                'A gentle pause to reschedule or let go',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: theme.brightness == Brightness.dark
-                                      ? AppTheme.darkTextSecondary
-                                      : const Color(0xFF7A1C24),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppTheme.accent,
-                            foregroundColor: Colors.white,
-                            visualDensity: VisualDensity.compact,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                          ),
-                          onPressed: () async {
-                            final first = overdueTasks.first;
-                            final res = await showReflectionDialog(
-                              context: context,
-                              task: first,
-                            );
-                            if (res != null) {
-                              if (res.action == ReflectionAction.complete) {
-                                await controller.completeTask(first.id);
-                              } else if (res.action ==
-                                  ReflectionAction.cancel) {
-                                await controller.cancelTask(
-                                  first.id,
-                                  reason: res.cancelReason ?? 'Skipped',
-                                );
-                              } else if (res.action ==
-                                      ReflectionAction.reschedule &&
-                                  res.newPlannedTime != null) {
-                                await controller.rescheduleTask(
-                                  first.id,
-                                  res.newPlannedTime!,
-                                );
-                              }
-                            }
-                          },
-                          child: const Text(
-                            'Reflect',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                IosReflectionBanner(
+                  overdueTasks: overdueTasks,
+                  onReflect: () async {
+                    final first = overdueTasks.first;
+                    final res = await showReflectionDialog(
+                      context: context,
+                      task: first,
+                    );
+                    if (res != null) {
+                      if (res.action == ReflectionAction.complete) {
+                        await controller.completeTask(first.id);
+                      } else if (res.action == ReflectionAction.cancel) {
+                        await controller.cancelTask(
+                          first.id,
+                          reason: res.cancelReason ?? 'Skipped',
+                        );
+                      } else if (res.action == ReflectionAction.reschedule &&
+                          res.newPlannedTime != null) {
+                        await controller.rescheduleTask(
+                          first.id,
+                          res.newPlannedTime!,
+                        );
+                      }
+                    }
+                  },
                 ),
 
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SegmentedButton<TaskFilter>(
-                    segments: const [
-                      ButtonSegment(value: TaskFilter.all, label: Text('All')),
-                      ButtonSegment(
-                        value: TaskFilter.today,
-                        label: Text('Today'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.planned,
-                        label: Text('Planned'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.completed,
-                        label: Text('Done'),
-                      ),
-                      ButtonSegment(
-                        value: TaskFilter.cancelled,
-                        label: Text('Cancelled'),
-                      ),
-                    ],
-                    selected: {controller.currentFilter},
-                    onSelectionChanged: (selected) {
-                      controller.setFilter(selected.first);
-                    },
-                  ),
-                ),
-              ),
+              const SizedBox(height: 4),
+
+              // Grouped Inset Task List Container
               Expanded(
                 child: visibleTasks.isEmpty
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Opacity(
-                              opacity: 0.5,
-                              child: IsohedronLogo(size: 72),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              'Sanctuary is Clear',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface
-                                    .withValues(alpha: 0.8),
+                            Opacity(
+                              opacity: 0.35,
+                              child: Icon(
+                                CupertinoIcons.tray,
+                                size: 56,
+                                color: textSecondary,
                               ),
                             ),
-                            const SizedBox(height: 6),
+                            const SizedBox(height: 14),
                             Text(
-                              'Tap + below to set your next intention',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.outline,
+                              'No Reminders',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.3,
+                                color: textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Tap "New Reminder" below to create one',
+                              style: TextStyle(
+                                fontSize: 13,
+                                letterSpacing: -0.1,
+                                color: textSecondary,
                               ),
                             ),
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        itemCount: visibleTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = visibleTasks[index];
-                          return IosTaskCell(
-                            task: task,
-                            showDivider: index < visibleTasks.length - 1,
-                            onToggleComplete: (t) async {
-                              if (t.isCompleted) {
-                                await controller.reopenTask(t.id);
-                              } else {
-                                await controller.completeTask(t.id);
-                              }
-                            },
-                            onReflect: (t) async {
-                              final res = await showReflectionDialog(
-                                context: context,
-                                task: t,
-                              );
-                              if (res != null) {
-                                if (res.action == ReflectionAction.complete) {
-                                  await controller.completeTask(t.id);
-                                } else if (res.action ==
-                                    ReflectionAction.cancel) {
-                                  await controller.cancelTask(
-                                    t.id,
-                                    reason: res.cancelReason ?? 'Skipped',
-                                  );
-                                } else if (res.action ==
-                                        ReflectionAction.reschedule &&
-                                    res.newPlannedTime != null) {
-                                  await controller.rescheduleTask(
-                                    t.id,
-                                    res.newPlannedTime!,
-                                  );
-                                }
-                              }
-                            },
-                            onReschedule: (t) async {
-                              final planned = await showPlanTaskDialog(
-                                context: context,
-                                initialTime: t.plannedTime,
-                              );
-                              if (planned != null) {
-                                await controller.rescheduleTask(
-                                  t.id,
-                                  planned,
-                                );
-                              }
-                            },
-                            onCancel: (t) async {
-                              final reason = await showCancelReasonDialog(
-                                context: context,
-                                task: t,
-                              );
-                              if (reason != null) {
-                                await controller.cancelTask(
-                                  t.id,
-                                  reason: reason,
-                                );
-                              }
-                            },
-                            onDelete: (t) async {
-                              await controller.deleteTask(t.id);
-                            },
-                          );
-                        },
+                    : ListView(
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                        children: [
+                          Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: BoxDecoration(
+                              color: secondaryBg,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                for (int i = 0; i < visibleTasks.length; i++)
+                                  IosTaskCell(
+                                    task: visibleTasks[i],
+                                    showDivider: i < visibleTasks.length - 1,
+                                    onToggleComplete: (t) async {
+                                      if (t.isCompleted) {
+                                        await controller.reopenTask(t.id);
+                                      } else {
+                                        await controller.completeTask(t.id);
+                                      }
+                                    },
+                                    onReflect: (t) async {
+                                      final res = await showReflectionDialog(
+                                        context: context,
+                                        task: t,
+                                      );
+                                      if (res != null) {
+                                        if (res.action ==
+                                            ReflectionAction.complete) {
+                                          await controller.completeTask(t.id);
+                                        } else if (res.action ==
+                                            ReflectionAction.cancel) {
+                                          await controller.cancelTask(
+                                            t.id,
+                                            reason:
+                                                res.cancelReason ?? 'Skipped',
+                                          );
+                                        } else if (res.action ==
+                                                ReflectionAction.reschedule &&
+                                            res.newPlannedTime != null) {
+                                          await controller.rescheduleTask(
+                                            t.id,
+                                            res.newPlannedTime!,
+                                          );
+                                        }
+                                      }
+                                    },
+                                    onReschedule: (t) async {
+                                      final planned = await showPlanTaskDialog(
+                                        context: context,
+                                        initialTime: t.plannedTime,
+                                      );
+                                      if (planned != null) {
+                                        await controller.rescheduleTask(
+                                          t.id,
+                                          planned,
+                                        );
+                                      }
+                                    },
+                                    onCancel: (t) async {
+                                      final reason =
+                                          await showCancelReasonDialog(
+                                        context: context,
+                                        task: t,
+                                      );
+                                      if (reason != null) {
+                                        await controller.cancelTask(
+                                          t.id,
+                                          reason: reason,
+                                        );
+                                      }
+                                    },
+                                    onDelete: (t) async {
+                                      await controller.deleteTask(t.id);
+                                    },
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
               ),
             ],
           ),
-          floatingActionButton: FloatingActionButton.extended(
-            icon: const Icon(Icons.add),
-            label: const Text('New Task'),
-            onPressed: () => _showCreateTaskDialog(context),
+
+          // Authentic iOS Bottom Action Bar (replacing Android FAB)
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: secondaryBg,
+              border: Border(
+                top: BorderSide(
+                  color: separatorColor,
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minSize: 38,
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        _showCreateTaskSheet(context);
+                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            CupertinoIcons.plus_circle_fill,
+                            color: systemBlue,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'New Reminder',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: systemBlue,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    CupertinoButton(
+                      padding: EdgeInsets.zero,
+                      minSize: 38,
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _showListSwitcherActionSheet(context);
+                      },
+                      child: Row(
+                        children: [
+                          Text(
+                            controller.currentList.title,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: textSecondary,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            CupertinoIcons.list_bullet,
+                            color: textSecondary,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       },
+    );
+  }
+
+  void _showListSwitcherActionSheet(BuildContext context) {
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Switch Task List'),
+        actions: controller.taskLists.map((list) {
+          final isSelected = list.id == controller.selectedListId;
+          return CupertinoActionSheetAction(
+            onPressed: () async {
+              HapticFeedback.lightImpact();
+              Navigator.of(ctx).pop();
+              if (!isSelected) {
+                await controller.switchList(list.id);
+              }
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  list.isLocal
+                      ? CupertinoIcons.device_phone_portrait
+                      : CupertinoIcons.cloud,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  list.title,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 8),
+                  const Icon(CupertinoIcons.checkmark, size: 16),
+                ],
+              ],
+            ),
+          );
+        }).toList(),
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
     );
   }
 
@@ -388,89 +538,211 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showCreateTaskDialog(BuildContext context) {
+  /// Authentic iOS modal sheet for quick reminder creation
+  void _showCreateTaskSheet(BuildContext context) {
     final titleController = TextEditingController();
     final notesController = TextEditingController();
     DateTime? plannedTime;
 
-    showModalBottomSheet<void>(
+    showCupertinoModalPopup<void>(
       context: context,
-      isScrollControlled: true,
       builder: (ctx) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final sheetBg = isDark
+            ? AppTheme.darkSecondaryGroupedBackground
+            : AppTheme.lightSecondaryGroupedBackground;
+
+        final inputBg = isDark
+            ? AppTheme.darkTertiaryGroupedBackground
+            : AppTheme.systemGray6Light;
+
+        final textPrimary =
+            isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
+
+        final textSecondary =
+            isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
+
         return StatefulBuilder(
           builder: (context, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 20,
-                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'New Task in ${controller.currentList.title}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: titleController,
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Task title',
-                      border: OutlineInputBorder(),
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: sheetBg,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: notesController,
-                    decoration: const InputDecoration(
-                      labelText: 'Notes (optional)',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.alarm, size: 16),
-                        label: Text(
-                          plannedTime != null
-                              ? 'Planned: ${plannedTime!.toLocal().month}/${plannedTime!.toLocal().day} ${plannedTime!.toLocal().hour}:${plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
-                              : 'Set Reminder',
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // iOS Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              child: const Text('Cancel'),
+                            ),
+                            Text(
+                              'New Reminder',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -0.3,
+                                color: textPrimary,
+                              ),
+                            ),
+                            CupertinoButton(
+                              padding: EdgeInsets.zero,
+                              minSize: 32,
+                              onPressed: () async {
+                                final title = titleController.text.trim();
+                                if (title.isNotEmpty) {
+                                  HapticFeedback.lightImpact();
+                                  await controller.createTask(
+                                    title: title,
+                                    notes:
+                                        notesController.text.trim().isNotEmpty
+                                            ? notesController.text.trim()
+                                            : null,
+                                    plannedTime: plannedTime,
+                                  );
+                                  if (ctx.mounted) Navigator.of(ctx).pop();
+                                }
+                              },
+                              child: const Text(
+                                'Add',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                          ],
                         ),
-                        onPressed: () async {
-                          final selected =
-                              await showPlanTaskDialog(context: context);
-                          if (selected != null) {
-                            setModalState(() {
-                              plannedTime = selected;
-                            });
-                          }
-                        },
-                      ),
-                      const Spacer(),
-                      FilledButton(
-                        onPressed: () async {
-                          final title = titleController.text.trim();
-                          if (title.isNotEmpty) {
-                            await controller.createTask(
-                              title: title,
-                              notes: notesController.text.trim().isNotEmpty
-                                  ? notesController.text.trim()
-                                  : null,
-                              plannedTime: plannedTime,
+                        const SizedBox(height: 12),
+
+                        // Input Group
+                        Container(
+                          decoration: BoxDecoration(
+                            color: inputBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          child: Column(
+                            children: [
+                              CupertinoTextField(
+                                controller: titleController,
+                                autofocus: true,
+                                placeholder: 'Title',
+                                placeholderStyle: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 15,
+                                ),
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 15,
+                                ),
+                                decoration: const BoxDecoration(),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                              ),
+                              const Divider(height: 12, thickness: 0.5),
+                              CupertinoTextField(
+                                controller: notesController,
+                                placeholder: 'Notes',
+                                placeholderStyle: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 14,
+                                ),
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 14,
+                                ),
+                                decoration: const BoxDecoration(),
+                                maxLines: 2,
+                                minLines: 1,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 4),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Date & Time reminder button
+                        GestureDetector(
+                          onTap: () async {
+                            HapticFeedback.selectionClick();
+                            final selected = await showPlanTaskDialog(
+                              context: context,
+                              initialTime: plannedTime,
                             );
-                            if (ctx.mounted) Navigator.of(ctx).pop();
-                          }
-                        },
-                        child: const Text('Add Task'),
-                      ),
-                    ],
+                            if (selected != null) {
+                              setModalState(() {
+                                plannedTime = selected;
+                              });
+                            }
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: inputBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  CupertinoIcons.alarm,
+                                  size: 18,
+                                  color: plannedTime != null
+                                      ? (isDark
+                                          ? AppTheme.darkSystemBlue
+                                          : AppTheme.systemBlue)
+                                      : textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    plannedTime != null
+                                        ? '${plannedTime!.toLocal().month}/${plannedTime!.toLocal().day} at ${plannedTime!.toLocal().hour}:${plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
+                                        : 'Set Date & Time',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: plannedTime != null
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: plannedTime != null
+                                          ? textPrimary
+                                          : textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  CupertinoIcons.chevron_right,
+                                  size: 14,
+                                  color: textSecondary,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
             );
           },
@@ -550,7 +822,7 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
               ),
             );
           },
-          child: const Text('Welcome Guide'),
+          child: const Text('Revisit Onboarding'),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
@@ -565,91 +837,36 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const CircleAvatar(
+            child: Icon(Icons.check),
           ),
-          child: Row(
+          title: Text(widget.controller.googleEmail ?? 'Google Account'),
+          subtitle: const Text('Google Tasks sync active'),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.tonal(
+          onPressed: () async {
+            Navigator.of(context).pop();
+            await widget.controller.syncCurrentList();
+          },
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.check_circle, color: Colors.green),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Status: Active & Connected',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.green,
-                      ),
-                    ),
-                    Text(
-                      widget.controller.googleEmail ?? 'Google Account',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
+              Icon(Icons.sync, size: 18),
+              SizedBox(width: 8),
+              Text('Sync Current List Now'),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'Tasks and lists sync automatically. You can also trigger an immediate sync below.',
-          style: TextStyle(fontSize: 13),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.sync),
-                label: const Text('Sync Now'),
-                onPressed: _isLoading
-                    ? null
-                    : () async {
-                        setState(() => _isLoading = true);
-                        try {
-                          await widget.controller.syncCurrentList();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Tasks synced successfully.'),
-                              ),
-                            );
-                          }
-                        } finally {
-                          if (mounted) setState(() => _isLoading = false);
-                        }
-                      },
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: FilledButton.tonalIcon(
-                icon: const Icon(Icons.logout),
-                label: const Text('Disconnect'),
-                onPressed: _isLoading
-                    ? null
-                    : () async {
-                        setState(() => _isLoading = true);
-                        await widget.controller.signOutGoogle();
-                        if (mounted) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Disconnected from Google Tasks.'),
-                            ),
-                          );
-                        }
-                      },
-              ),
-            ),
-          ],
+        const SizedBox(height: 8),
+        OutlinedButton(
+          onPressed: () async {
+            await widget.controller.signOutGoogle();
+            setState(() {});
+          },
+          child: const Center(child: Text('Sign Out & Switch to Local Only')),
         ),
       ],
     );
@@ -661,30 +878,87 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Connect Google Tasks to sync your task lists across devices.',
+          'Connect with Google Tasks for cloud synchronization across devices:',
           style: TextStyle(fontSize: 13),
         ),
         const SizedBox(height: 12),
         TabBar(
           controller: _tabController,
-          labelColor: theme.colorScheme.primary,
-          unselectedLabelColor: theme.colorScheme.outline,
-          indicatorSize: TabBarIndicatorSize.tab,
           tabs: const [
-            Tab(text: 'Direct Token', icon: Icon(Icons.key, size: 18)),
-            Tab(text: 'Google Play', icon: Icon(Icons.android, size: 18)),
+            Tab(text: 'Google Sign-In'),
+            Tab(text: 'Direct Token'),
           ],
         ),
         const SizedBox(height: 12),
         SizedBox(
-          height: 320,
+          height: _showTokenGuide ? 240 : 160,
           child: TabBarView(
             controller: _tabController,
             children: [
+              _buildSignInTab(theme),
               _buildTokenTab(theme),
-              _buildPlayServicesTab(theme),
             ],
           ),
+        ),
+        if (_statusError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _statusError!,
+            style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSignInTab(ThemeData theme) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          'One-tap sign-in via Google Play Services.',
+          style: TextStyle(fontSize: 12),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          icon: _isLoading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.login),
+          label: const Text('Sign In with Google'),
+          onPressed: _isLoading
+              ? null
+              : () async {
+                  setState(() {
+                    _isLoading = true;
+                    _statusError = null;
+                  });
+                  try {
+                    final ok = await widget.controller.signInGoogle();
+                    if (!ok && mounted) {
+                      setState(() {
+                        _statusError = widget.controller.googleLastError ??
+                            'Sign in cancelled or failed';
+                      });
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      setState(() {
+                        _statusError = e.toString();
+                      });
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
+                  }
+                },
         ),
       ],
     );
@@ -693,260 +967,75 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
   Widget _buildTokenTab(ThemeData theme) {
     return SingleChildScrollView(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Instant Direct Sync',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Connect instantly with an OAuth access token. Guarantees live sync on all devices without Google Cloud setup.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: 'Account Email (optional)',
+              isDense: true,
+            ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _tokenController,
             decoration: const InputDecoration(
               labelText: 'OAuth Access Token (ya29...)',
-              hintText: 'Paste OAuth Bearer Token',
-              border: OutlineInputBorder(),
-              isDense: true,
-            ),
-            maxLines: 2,
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Email or Label (optional)',
-              hintText: 'user@gmail.com',
-              border: OutlineInputBorder(),
               isDense: true,
             ),
           ),
-          if (_statusError != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              _statusError!,
-              style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
-            ),
-          ],
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: FilledButton.icon(
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.link),
-                  label: const Text('Connect & Sync'),
-                  onPressed: _isLoading
-                      ? null
-                      : () async {
-                          final token = _tokenController.text.trim();
-                          if (token.isEmpty) {
-                            setState(
-                              () => _statusError =
-                                  'Please paste an OAuth access token.',
-                            );
-                            return;
-                          }
-                          setState(() {
-                            _isLoading = true;
-                            _statusError = null;
-                          });
-                          final email = _emailController.text.trim();
-                          final success =
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showTokenGuide = !_showTokenGuide;
+                  });
+                },
+                child:
+                    Text(_showTokenGuide ? 'Hide Info' : 'Where to get token?'),
+              ),
+              FilledButton(
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        final token = _tokenController.text.trim();
+                        if (token.isEmpty) return;
+                        setState(() {
+                          _isLoading = true;
+                          _statusError = null;
+                        });
+                        try {
+                          final ok =
                               await widget.controller.connectGoogleWithToken(
                             token,
-                            email: email.isNotEmpty ? email : null,
+                            email: _emailController.text.trim(),
                           );
-                          if (mounted) {
-                            if (success) {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Connected to Google Tasks as ${widget.controller.googleEmail}',
-                                  ),
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                _isLoading = false;
-                                _statusError = widget
-                                        .controller.googleLastError ??
-                                    'Failed to connect with token. Ensure Tasks API is enabled.';
-                              });
-                            }
+                          if (!ok && mounted) {
+                            setState(() {
+                              _statusError =
+                                  widget.controller.googleLastError ??
+                                      'Token connection failed';
+                            });
                           }
-                        },
-                ),
+                        } catch (e) {
+                          if (mounted) {
+                            setState(() {
+                              _statusError = e.toString();
+                            });
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          }
+                        }
+                      },
+                child: const Text('Connect Token'),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            icon: Icon(
-              _showTokenGuide ? Icons.expand_less : Icons.help_outline,
-              size: 16,
-            ),
-            label: Text(
-              _showTokenGuide ? 'Hide Token Guide' : 'How to get a token (30s)',
-            ),
-            onPressed: () => setState(() => _showTokenGuide = !_showTokenGuide),
-          ),
-          if (_showTokenGuide)
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest.withValues(
-                  alpha: 0.5,
-                ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: const Text(
-                '1. Open developers.google.com/oauthplayground\n'
-                '2. Under "Tasks API v1", select "https://www.googleapis.com/auth/tasks"\n'
-                '3. Click "Authorize APIs" and sign in\n'
-                '4. Click "Exchange authorization code for tokens"\n'
-                '5. Copy the generated "Access token" and paste it here.',
-                style: TextStyle(fontSize: 11, height: 1.4),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPlayServicesTab(ThemeData theme) {
-    final lastErr = widget.controller.googleLastError;
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Native Google Play Sign-In',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '1-Tap account picker via Google Play Services on Android.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              icon: _isLoading
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.account_circle),
-              label: const Text('Sign In with Google'),
-              onPressed: _isLoading
-                  ? null
-                  : () async {
-                      setState(() => _isLoading = true);
-                      final success = await widget.controller.signInGoogle();
-                      if (mounted) {
-                        setState(() => _isLoading = false);
-                        if (success) {
-                          Navigator.of(context).pop();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Connected to Google Tasks as ${widget.controller.googleEmail}',
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    },
-            ),
-          ),
-          if (lastErr != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Play Services Error: $lastErr',
-                    style: TextStyle(
-                      color: theme.colorScheme.error,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (lastErr.contains('10')) ...[
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Note: ApiException 10 indicates that an Android OAuth Client ID is needed in Google Cloud Console matching the application ID.',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          _buildCopyRow('Package Name', 'com.ovrrup.isohedron'),
-          const SizedBox(height: 6),
-          const Text(
-            'Tip: For immediate zero-setup sync on any device, use the "Direct Token" tab above.',
-            style: TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCopyRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              '$label: $value',
-              style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.copy, size: 14),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            tooltip: 'Copy $label',
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: value));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Copied $label to clipboard'),
-                  duration: const Duration(seconds: 2),
-                ),
-              );
-            },
           ),
         ],
       ),
