@@ -57,28 +57,41 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
 
   @override
   Future<void> init() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
-    await _plugin.initialize(initSettings);
+    try {
+      const androidInit = AndroidInitializationSettings('@drawable/ic_notification');
+      const initSettings = InitializationSettings(android: androidInit);
+      await _plugin.initialize(initSettings);
 
-    const androidChannel = AndroidNotificationChannel(
-      channelId,
-      channelName,
-      description: channelDesc,
-      importance: Importance.high,
-    );
+      const androidChannel = AndroidNotificationChannel(
+        channelId,
+        channelName,
+        description: channelDesc,
+        importance: Importance.high,
+      );
 
-    final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    await androidImplementation?.createNotificationChannel(androidChannel);
+      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      await androidImplementation?.createNotificationChannel(androidChannel);
+    } catch (_) {
+      try {
+        const fallbackInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+        await _plugin.initialize(const InitializationSettings(android: fallbackInit));
+      } catch (_) {
+        // Safe degradation: app continues functioning even if notifications cannot initialize
+      }
+    }
   }
 
   @override
   Future<bool> requestPermissions() async {
-    final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
-    final granted = await androidImplementation?.requestNotificationsPermission();
-    return granted ?? true;
+    try {
+      final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      final granted = await androidImplementation?.requestNotificationsPermission();
+      return granted ?? true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -88,21 +101,26 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
     required String body,
     required DateTime scheduledTime,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const details = NotificationDetails(android: androidDetails);
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: 'ic_notification',
+      );
+      const details = NotificationDetails(android: androidDetails);
 
-    if (scheduledTime.isBefore(DateTime.now())) {
-      await showImmediate(id: id, title: title, body: body);
-      return;
+      if (scheduledTime.isBefore(DateTime.now())) {
+        await showImmediate(id: id, title: title, body: body);
+        return;
+      }
+
+      await _plugin.show(id, title, body, details);
+    } catch (_) {
+      // Degrade gracefully if system prevents alarm scheduling
     }
-
-    await _plugin.show(id, title, body, details);
   }
 
   @override
@@ -111,15 +129,34 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
     required String title,
     required String body,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: channelDesc,
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const details = NotificationDetails(android: androidDetails);
-    await _plugin.show(id, title, body, details);
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDesc,
+        importance: Importance.high,
+        priority: Priority.high,
+        icon: 'ic_notification',
+      );
+      const details = NotificationDetails(android: androidDetails);
+      await _plugin.show(id, title, body, details);
+    } catch (_) {
+      // Degrade gracefully
+    }
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    try {
+      await _plugin.cancel(id);
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> cancelAll() async {
+    try {
+      await _plugin.cancelAll();
+    } catch (_) {}
   }
 
   @override

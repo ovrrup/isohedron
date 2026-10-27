@@ -9,11 +9,16 @@ import 'ui/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Storage persistence in app sandbox documents directory
-  final docsDir = await getApplicationDocumentsDirectory();
-  final storageFile = File('${docsDir.path}/isohedron_tasks.json');
+  StorageService storage;
+  try {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final storageFile = File('${docsDir.path}/isohedron_tasks.json');
+    storage = StorageService(storageFile: storageFile);
+  } catch (e) {
+    debugPrint('Storage directory fallback: $e');
+    storage = StorageService.inMemory();
+  }
 
-  final storage = StorageService(storageFile: storageFile);
   final notifications = NotificationService.local();
   final googleTasks = GoogleTasksService.live();
 
@@ -23,7 +28,11 @@ void main() async {
     googleTasks: googleTasks,
   );
 
-  await controller.init();
+  try {
+    await controller.init();
+  } catch (e, stack) {
+    debugPrint('Controller init non-fatal error: $e\n$stack');
+  }
 
   runApp(IsohedronApp(controller: controller));
 }

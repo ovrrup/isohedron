@@ -8,6 +8,7 @@ import 'storage_service.dart';
 abstract class GoogleTasksClient {
   bool get isAuthenticated;
   String? get userEmail;
+  String? get lastError;
   Future<bool> signIn();
   Future<void> signOut();
   Future<List<TaskList>> fetchTaskLists();
@@ -49,6 +50,9 @@ class MockGoogleTasksClient implements GoogleTasksClient {
 
   @override
   String? get userEmail => _signedIn ? _mockEmail : null;
+
+  @override
+  String? get lastError => null;
 
   @override
   Future<bool> signIn() async {
@@ -109,6 +113,7 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
   final GoogleSignIn _googleSignIn;
   gtasks.TasksApi? _tasksApi;
   String? _userEmail;
+  String? _lastError;
 
   LiveGoogleTasksClient({GoogleSignIn? googleSignIn})
       : _googleSignIn = googleSignIn ??
@@ -125,16 +130,24 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
   String? get userEmail => _userEmail;
 
   @override
+  String? get lastError => _lastError;
+
+  @override
   Future<bool> signIn() async {
+    _lastError = null;
     try {
       final account = await _googleSignIn.signIn();
-      if (account == null) return false;
+      if (account == null) {
+        _lastError = 'Sign in was cancelled.';
+        return false;
+      }
       final auth = await account.authHeaders;
       final authClient = GoogleAuthClient(auth);
       _tasksApi = gtasks.TasksApi(authClient);
       _userEmail = account.email;
       return true;
-    } catch (_) {
+    } catch (e) {
+      _lastError = e.toString();
       return false;
     }
   }
@@ -262,6 +275,7 @@ class GoogleTasksService {
 
   bool get isAuthenticated => _client.isAuthenticated;
   String? get userEmail => _client.userEmail;
+  String? get lastError => _client.lastError;
 
   Future<bool> signIn() => _client.signIn();
   Future<void> signOut() => _client.signOut();
