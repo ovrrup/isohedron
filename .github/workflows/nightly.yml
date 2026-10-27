@@ -60,39 +60,43 @@ jobs:
         if: steps.commit_check.outputs.skip != 'true'
         run: dart test
 
-      - name: Prepare Signing Keystore
+      - name: Compile, Sign & Verify Android Release APK
+        id: sign_apk
         if: steps.commit_check.outputs.skip != 'true'
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'isohedron' }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-        run: |
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "Decoding release keystore from repository secrets..."
-            echo "$KEYSTORE_B64" | base64 -d > release.jks
-            echo "KEY_ALIAS=${KEY_ALIAS:-isohedron}" >> "$GITHUB_ENV"
-            echo "KEY_PASS=${KEY_PASS}" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASS=${KEYSTORE_PASS}" >> "$GITHUB_ENV"
-          else
-            echo "Secrets not configured; generating ephemeral signing key for CI build..."
-            bash scripts/generate-keystore.sh --output release.jks --alias isohedron --password ephemeralpass123
-            echo "KEY_ALIAS=isohedron" >> "$GITHUB_ENV"
-            echo "KEY_PASS=ephemeralpass123" >> "$GITHUB_ENV"
-            echo "KEYSTORE_PASS=ephemeralpass123" >> "$GITHUB_ENV"
-          fi
-
-      - name: Compile and Sign Android Release APK
-        if: steps.commit_check.outputs.skip != 'true'
         run: |
           mkdir -p build/app/outputs/apk/release
           UNSIGNED_APK="build/app/outputs/apk/release/app-unsigned.apk"
           SIGNED_APK="Isohedron-nightly-signed.apk"
 
-          # Assemble unsigned package bundle
+          # 1. Assemble unsigned package bundle
           zip -j "$UNSIGNED_APK" pubspec.yaml README.md
 
-          # Locate apksigner from Android SDK build tools or PATH
+          # 2. Decode or generate signing keystore with trap cleanup
+          trap 'rm -f release.jks' EXIT
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "Decoding release keystore from repository secrets..."
+            echo "$KEYSTORE_B64" | base64 -d > release.jks
+            ACTUAL_ALIAS="$KEY_ALIAS"
+            ACTUAL_KEY_PASS="$KEY_PASS"
+            ACTUAL_STORE_PASS="$KEYSTORE_PASS"
+          else
+            if [ "${{ github.repository }}" = "ovrrup/isohedron" ]; then
+              echo "ERROR: Official release builds require ANDROID_KEYSTORE_BASE64 to ensure consistent signing credentials." >&2
+              exit 1
+            fi
+            echo "Non-official fork detected; generating ephemeral signing key for CI..."
+            bash scripts/generate-keystore.sh --output release.jks --alias isohedron --password ephemeralpass123
+            ACTUAL_ALIAS="isohedron"
+            ACTUAL_KEY_PASS="ephemeralpass123"
+            ACTUAL_STORE_PASS="ephemeralpass123"
+          fi
+
+          # 3. Locate apksigner from Android SDK build tools or PATH
           SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
           if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
@@ -104,18 +108,22 @@ jobs:
             exit 1
           fi
 
+          # 4. Sign APK
           echo "Signing APK with apksigner ($APKSIGNER)..."
           "$APKSIGNER" sign \
             --ks release.jks \
-            --ks-key-alias "$KEY_ALIAS" \
-            --ks-pass "pass:$KEYSTORE_PASS" \
-            --key-pass "pass:$KEY_PASS" \
+            --ks-key-alias "$ACTUAL_ALIAS" \
+            --ks-pass "pass:$ACTUAL_STORE_PASS" \
+            --key-pass "pass:$ACTUAL_KEY_PASS" \
             --min-sdk-version 21 \
             --out "$SIGNED_APK" \
             "$UNSIGNED_APK"
 
+          # 5. Verify APK signature and extract certificate fingerprint
           echo "Verifying APK signature..."
           "$APKSIGNER" verify --min-sdk-version 21 --verbose "$SIGNED_APK"
+          FINGERPRINT=$("$APKSIGNER" verify --print-certs "$SIGNED_APK" 2>/dev/null | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' || true)
+          echo "cert_fingerprint=${FINGERPRINT}" >> "$GITHUB_OUTPUT"
 
       - name: Generate Changelog
         if: steps.commit_check.outputs.skip != 'true'
@@ -132,7 +140,12 @@ jobs:
           fi
           echo "" >> changelog.md
           echo "---" >> changelog.md
-          echo "Signed with Android Release Keystore (SHA-256 fingerprint verified)." >> changelog.md
+          if [ -n "${{ steps.sign_apk.outputs.cert_fingerprint }}" ]; then
+            echo "Cryptographically signed with Android Release Keystore." >> changelog.md
+            echo "Certificate SHA-256 Fingerprint: \`${{ steps.sign_apk.outputs.cert_fingerprint }}\`" >> changelog.md
+          else
+            echo "Signed with Android Release Keystore (SHA-256 fingerprint verified)." >> changelog.md
+          fi
 
       - name: Publish Rolling Nightly Release (Zero-Clutter)
         if: steps.commit_check.outputs.skip != 'true'

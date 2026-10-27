@@ -29,9 +29,19 @@ if ! grep -q 'refs/tags/nightly\^{commit}' "$WORKFLOW"; then
   exit 1
 fi
 
-# 4. Verify signing secrets usage
+# 4. Verify signing secrets usage and consistency
 if ! grep -q 'ANDROID_KEYSTORE_BASE64' "$WORKFLOW" || ! grep -q 'ANDROID_KEY_ALIAS' "$WORKFLOW"; then
   echo "FAIL: Missing keystore secrets references"
+  exit 1
+fi
+
+if grep -q 'KEY_PASS=.*>> "\$GITHUB_ENV"' "$WORKFLOW" || grep -q 'KEYSTORE_PASS=.*>> "\$GITHUB_ENV"' "$WORKFLOW"; then
+  echo "FAIL: Secret passwords should not be written to GITHUB_ENV file; pass via step env instead"
+  exit 1
+fi
+
+if ! grep -q 'rm -f release.jks' "$WORKFLOW"; then
+  echo "FAIL: Missing immediate cleanup/shredding of release.jks after signing"
   exit 1
 fi
 
