@@ -42,25 +42,30 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Dart SDK
+      - name: Setup Flutter SDK
         if: steps.commit_check.outputs.skip != 'true'
-        uses: dart-lang/setup-dart@v1
+        uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: 'stable'
+          cache: true
 
       - name: Install Dependencies
         if: steps.commit_check.outputs.skip != 'true'
-        run: dart pub get
+        run: flutter pub get
 
       - name: Quality Gate - Linter
         if: steps.commit_check.outputs.skip != 'true'
-        run: dart analyze --fatal-infos
+        run: flutter analyze --fatal-infos
 
       - name: Quality Gate - Test Suite
         if: steps.commit_check.outputs.skip != 'true'
-        run: dart test
+        run: flutter test
 
-      - name: Compile, Sign & Verify Android Release APK
+      - name: Build Android Release APK
+        if: steps.commit_check.outputs.skip != 'true'
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Sign & Verify Android Release APK
         id: sign_apk
         if: steps.commit_check.outputs.skip != 'true'
         env:
@@ -69,11 +74,17 @@ jobs:
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          mkdir -p build/app/outputs/apk/release
-          UNSIGNED_APK="build/app/outputs/apk/release/app-unsigned.apk"
+          UNSIGNED_APK="build/app/outputs/flutter-apk/app-release.apk"
           SIGNED_APK="Isohedron-nightly-signed.apk"
 
-          # 1. Locate Android build tools and SDK platform
+          if [ ! -f "$UNSIGNED_APK" ]; then
+            echo "ERROR: Flutter release APK not found at $UNSIGNED_APK" >&2
+            exit 1
+          fi
+
+          echo "Compiled unsigned Flutter APK size: $(du -h "$UNSIGNED_APK")"
+
+          # 1. Locate Android build tools
           SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
           APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
           if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
@@ -84,19 +95,7 @@ jobs:
             exit 1
           fi
 
-          AAPT=$(find "$SDK_DIR/build-tools" -name aapt 2>/dev/null | sort -V | tail -n 1 || true)
-          ANDROID_JAR=$(find "$SDK_DIR/platforms" -name android.jar 2>/dev/null | sort -V | tail -n 1 || true)
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-
-          # 2. Package valid APK containing compiled binary AndroidManifest.xml
-          if [ -n "$AAPT" ] && [ -n "$ANDROID_JAR" ] && [ -f "$MANIFEST" ]; then
-            echo "Packaging APK using Android Asset Packaging Tool ($AAPT)..."
-            "$AAPT" package -F "$UNSIGNED_APK" -M "$MANIFEST" -I "$ANDROID_JAR" -f
-          else
-            zip -j "$UNSIGNED_APK" pubspec.yaml README.md
-          fi
-
-          # 3. Decode or generate signing keystore with trap cleanup
+          # 2. Decode release keystore with automatic cleanup
           trap 'rm -f release.jks' EXIT
           if [ -n "$KEYSTORE_B64" ]; then
             echo "Decoding release keystore from repository secrets..."
@@ -116,8 +115,8 @@ jobs:
             ACTUAL_STORE_PASS="ephemeralpass123"
           fi
 
-          # 4. Sign APK with Android release key
-          echo "Signing APK with apksigner ($APKSIGNER)..."
+          # 3. Sign APK with Android release key
+          echo "Signing Flutter APK with apksigner ($APKSIGNER)..."
           "$APKSIGNER" sign \
             --ks release.jks \
             --ks-key-alias "$ACTUAL_ALIAS" \
@@ -127,11 +126,12 @@ jobs:
             --out "$SIGNED_APK" \
             "$UNSIGNED_APK"
 
-          # 5. Verify APK signature and extract certificate fingerprint
+          # 4. Verify APK signature and extract certificate fingerprint
           echo "Verifying APK signature..."
           "$APKSIGNER" verify --min-sdk-version 21 --verbose "$SIGNED_APK"
           FINGERPRINT=$("$APKSIGNER" verify --print-certs "$SIGNED_APK" 2>/dev/null | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' || true)
           echo "cert_fingerprint=${FINGERPRINT}" >> "$GITHUB_OUTPUT"
+          echo "Signed release APK size: $(du -h "$SIGNED_APK")"
 
       - name: Generate Changelog
         if: steps.commit_check.outputs.skip != 'true'
