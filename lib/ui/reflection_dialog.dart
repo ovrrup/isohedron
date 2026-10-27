@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,7 +63,7 @@ Future<ReflectionResult?> showReflectionDialog({
           // Reschedule Action
           CupertinoActionSheetAction(
             onPressed: () async {
-              await HapticFeedback.lightImpact();
+              unawaited(HapticFeedback.lightImpact());
               final selected = await showPlanTaskDialog(
                 context: context,
                 initialTime: task.plannedTime,
@@ -114,7 +115,7 @@ Future<ReflectionResult?> showReflectionDialog({
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () async {
-              await HapticFeedback.lightImpact();
+              unawaited(HapticFeedback.lightImpact());
               final reason = await showCancelReasonDialog(
                 context: context,
                 task: task,

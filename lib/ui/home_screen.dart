@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -153,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: controller.isSyncing
                       ? null
                       : () async {
-                          await HapticFeedback.lightImpact();
+                          unawaited(HapticFeedback.lightImpact());
                           await controller.syncCurrentList();
                         },
                   child: controller.isSyncing
@@ -497,7 +498,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final isSelected = list.id == controller.selectedListId;
           return CupertinoActionSheetAction(
             onPressed: () async {
-              await HapticFeedback.lightImpact();
+              unawaited(HapticFeedback.lightImpact());
               Navigator.of(ctx).pop();
               if (!isSelected) {
                 await controller.switchList(list.id);
@@ -614,7 +615,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () async {
                                 final title = titleController.text.trim();
                                 if (title.isNotEmpty) {
-                                  await HapticFeedback.lightImpact();
+                                  unawaited(HapticFeedback.lightImpact());
                                   await controller.createTask(
                                     title: title,
                                     notes:
@@ -689,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Date & Time reminder button
                         GestureDetector(
                           onTap: () async {
-                            await HapticFeedback.selectionClick();
+                            unawaited(HapticFeedback.selectionClick());
                             final selected = await showPlanTaskDialog(
                               context: context,
                               initialTime: plannedTime,

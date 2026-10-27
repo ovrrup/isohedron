@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -24,7 +25,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   IsohedronAppController get controller => widget.controller;
 
   Future<void> _proceedToHome() async {
-    await HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
     await controller.completeOnboarding();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
@@ -254,7 +255,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _isSigningIn
                     ? null
                     : () async {
-                        await HapticFeedback.selectionClick();
+                        unawaited(HapticFeedback.selectionClick());
                         setState(() {
                           _isSigningIn = true;
                           _signInFeedback = null;
