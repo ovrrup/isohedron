@@ -17,9 +17,10 @@ Provide an automated, professional nightly release channel for Isohedron that co
 ### Goals
 * **Automated Daily Trigger:** Executes on a daily schedule (e.g. 02:00 UTC) with manual trigger (`workflow_dispatch`) support.
 * **Commit-Aware:** Checks whether `main` has new commits since the last nightly release. Skips silently if no changes have landed.
+* **Release Signing Pipeline:** Generate an official Android release keystore, manage credentials securely via GitHub Secrets (`ANDROID_KEYSTORE_BASE64`, `ANDROID_KEY_ALIAS`, etc.), and cryptographically sign the APK with `apksigner` before release.
 * **Quality Gate:** Runs full static analysis (`dart analyze --fatal-infos`) and the test suite (`dart test`) before packaging.
 * **Zero-Clutter Rolling Release:** Automatically deletes any existing `nightly` release and tag before publishing the new build, ensuring exactly one clean pre-release exists on GitHub Releases at any time.
-* **Permanent Download Link:** Provides a stable, unchanging asset URL (`.../releases/download/nightly/...`) for users and testers.
+* **Permanent Download Link:** Provides a stable, unchanging asset URL (`.../releases/download/nightly/Isohedron-nightly-signed.apk`) for users and testers.
 * **Automated Changelog:** Auto-generates release notes highlighting recent commits included in the build.
 
 ### Non-Goals
@@ -54,7 +55,16 @@ Provide an automated, professional nightly release channel for Isohedron that co
 
 ## 5. Implementation Specification
 
-### Workflow File: `.github/workflows/nightly.yml`
+### 5.1 Signing Credentials Management
+* **Keystore Generation:** Generate an RSA 2048-bit PKCS#12 Android Release Keystore (`isohedron-release.jks`, alias `isohedron`, validity 10000 days).
+* **Security & Git Hygiene:** Add `*.jks` and `*.keystore` to `.gitignore` so private keys are never committed to the public git repository.
+* **Secret Configuration:** Store credentials in GitHub Repository Secrets via `gh secret set`:
+  * `ANDROID_KEYSTORE_BASE64`: Base64-encoded keystore binary.
+  * `ANDROID_KEY_ALIAS`: `isohedron`.
+  * `ANDROID_KEY_PASSWORD`: Key password.
+  * `ANDROID_KEYSTORE_PASSWORD`: Keystore password.
+
+### 5.2 Workflow File: `.github/workflows/nightly.yml`
 * **Trigger:**
   ```yaml
   on:
@@ -71,11 +81,16 @@ Provide an automated, professional nightly release channel for Isohedron that co
   1. `actions/checkout@v4` with `fetch-depth: 0` (full history for changelog and commit diffs).
   2. Check for new commits on `main` since `nightly` tag:
      * If `nightly` tag exists and points to `HEAD`, exit with notice ("No new commits since last nightly. Skipping.").
-  3. Set up Dart / Flutter environment.
+  3. Set up Java 17 and Dart/Flutter environment.
   4. Run `dart pub get`, `dart analyze --fatal-infos`, and `dart test`.
-  5. Build release artifacts and package bundle.
+  5. Build release artifacts:
+     * If `ANDROID_KEYSTORE_BASE64` secret exists, decode it to `release.jks`.
+     * Otherwise generate an ephemeral signing key on the runner so builds never fail.
+     * Build APK and sign using Android SDK build-tools `apksigner`:
+       `apksigner sign --ks release.jks --ks-key-alias $ANDROID_KEY_ALIAS ... Isohedron-nightly-signed.apk`
+     * Verify signature with `apksigner verify Isohedron-nightly-signed.apk`.
   6. Delete existing `nightly` release and tag via `gh release delete nightly --yes --cleanup-tag || true`.
-  7. Publish fresh `nightly` pre-release via `gh release create nightly <artifacts> --prerelease --title "Isohedron Nightly - $(date +'%Y-%m-%d')" --generate-notes`.
+  7. Publish fresh `nightly` pre-release via `gh release create nightly Isohedron-nightly-signed.apk --prerelease --title "Isohedron Nightly - $(date +'%Y-%m-%d')" --generate-notes`.
 
 ---
 
