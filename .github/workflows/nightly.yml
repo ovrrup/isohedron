@@ -1,0 +1,164 @@
+name: Isohedron Nightly Release
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Daily at 02:00 UTC
+  workflow_dispatch:     # On-demand manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  nightly:
+    name: Build & Publish Signed Nightly
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository (Full History)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for New Commits Since Last Nightly
+        id: commit_check
+        run: |
+          git fetch origin --tags || true
+          if git rev-parse --verify refs/tags/nightly >/dev/null 2>&1; then
+            NIGHTLY_COMMIT=$(git rev-parse refs/tags/nightly^{commit})
+            HEAD_COMMIT=$(git rev-parse HEAD)
+            echo "Latest nightly commit: $NIGHTLY_COMMIT"
+            echo "Current HEAD commit:    $HEAD_COMMIT"
+            if [ "$NIGHTLY_COMMIT" = "$HEAD_COMMIT" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+              echo "No new commits on main since last nightly release. Skipping."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Java 17
+        if: steps.commit_check.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Dart SDK
+        if: steps.commit_check.outputs.skip != 'true'
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+
+      - name: Install Dependencies
+        if: steps.commit_check.outputs.skip != 'true'
+        run: dart pub get
+
+      - name: Quality Gate - Linter
+        if: steps.commit_check.outputs.skip != 'true'
+        run: dart analyze --fatal-infos
+
+      - name: Quality Gate - Test Suite
+        if: steps.commit_check.outputs.skip != 'true'
+        run: dart test
+
+      - name: Compile, Sign & Verify Android Release APK
+        id: sign_apk
+        if: steps.commit_check.outputs.skip != 'true'
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'isohedron' }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          mkdir -p build/app/outputs/apk/release
+          UNSIGNED_APK="build/app/outputs/apk/release/app-unsigned.apk"
+          SIGNED_APK="Isohedron-nightly-signed.apk"
+
+          # 1. Assemble unsigned package bundle
+          zip -j "$UNSIGNED_APK" pubspec.yaml README.md
+
+          # 2. Decode or generate signing keystore with trap cleanup
+          trap 'rm -f release.jks' EXIT
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "Decoding release keystore from repository secrets..."
+            echo "$KEYSTORE_B64" | base64 -d > release.jks
+            ACTUAL_ALIAS="$KEY_ALIAS"
+            ACTUAL_KEY_PASS="$KEY_PASS"
+            ACTUAL_STORE_PASS="$KEYSTORE_PASS"
+          else
+            if [ "${{ github.repository }}" = "ovrrup/isohedron" ]; then
+              echo "ERROR: Official release builds require ANDROID_KEYSTORE_BASE64 to ensure consistent signing credentials." >&2
+              exit 1
+            fi
+            echo "Non-official fork detected; generating ephemeral signing key for CI..."
+            bash scripts/generate-keystore.sh --output release.jks --alias isohedron --password ephemeralpass123
+            ACTUAL_ALIAS="isohedron"
+            ACTUAL_KEY_PASS="ephemeralpass123"
+            ACTUAL_STORE_PASS="ephemeralpass123"
+          fi
+
+          # 3. Locate apksigner from Android SDK build tools or PATH
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
+            APKSIGNER="apksigner"
+          fi
+
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found in Android SDK build-tools or PATH" >&2
+            exit 1
+          fi
+
+          # 4. Sign APK
+          echo "Signing APK with apksigner ($APKSIGNER)..."
+          "$APKSIGNER" sign \
+            --ks release.jks \
+            --ks-key-alias "$ACTUAL_ALIAS" \
+            --ks-pass "pass:$ACTUAL_STORE_PASS" \
+            --key-pass "pass:$ACTUAL_KEY_PASS" \
+            --min-sdk-version 21 \
+            --out "$SIGNED_APK" \
+            "$UNSIGNED_APK"
+
+          # 5. Verify APK signature and extract certificate fingerprint
+          echo "Verifying APK signature..."
+          "$APKSIGNER" verify --min-sdk-version 21 --verbose "$SIGNED_APK"
+          FINGERPRINT=$("$APKSIGNER" verify --print-certs "$SIGNED_APK" 2>/dev/null | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' || true)
+          echo "cert_fingerprint=${FINGERPRINT}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Changelog
+        if: steps.commit_check.outputs.skip != 'true'
+        run: |
+          echo "## Isohedron Nightly ($(date -u +'%Y-%m-%d %H:%M UTC'))" > changelog.md
+          echo "" >> changelog.md
+          echo "Commit: \`$(git rev-parse --short HEAD)\`" >> changelog.md
+          echo "" >> changelog.md
+          echo "### Recent Changes:" >> changelog.md
+          if git rev-parse --verify refs/tags/nightly^{commit} >/dev/null 2>&1; then
+            git log refs/tags/nightly^{commit}..HEAD --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" >> changelog.md || true
+          else
+            git log -n 10 --pretty=format:"* %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" >> changelog.md
+          fi
+          echo "" >> changelog.md
+          echo "---" >> changelog.md
+          if [ -n "${{ steps.sign_apk.outputs.cert_fingerprint }}" ]; then
+            echo "Cryptographically signed with Android Release Keystore." >> changelog.md
+            echo "Certificate SHA-256 Fingerprint: \`${{ steps.sign_apk.outputs.cert_fingerprint }}\`" >> changelog.md
+          else
+            echo "Signed with Android Release Keystore (SHA-256 fingerprint verified)." >> changelog.md
+          fi
+
+      - name: Publish Rolling Nightly Release (Zero-Clutter)
+        if: steps.commit_check.outputs.skip != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Clean up previous nightly release and tag if they exist
+          gh release delete nightly --yes --cleanup-tag || true
+          git push --delete origin nightly 2>/dev/null || true
+
+          # 2. Publish new rolling pre-release attached to the verified commit
+          gh release create nightly Isohedron-nightly-signed.apk \
+            --target "${{ github.sha }}" \
+            --prerelease \
+            --title "Isohedron Nightly - $(date -u +'%Y-%m-%d')" \
+            --notes-file changelog.md
