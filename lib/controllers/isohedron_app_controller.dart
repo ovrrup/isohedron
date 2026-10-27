@@ -377,7 +377,9 @@ class IsohedronAppController extends ChangeNotifier {
     await storage.deleteTask(_selectedListId, taskId);
     await notifications.cancelReminder(taskId);
 
-    if (isGoogleConnected && !currentList.isLocal && !taskId.startsWith('local_')) {
+    if (isGoogleConnected &&
+        !currentList.isLocal &&
+        !taskId.startsWith('local_')) {
       try {
         await googleTasks.deleteTask(_selectedListId, taskId);
         await storage.purgeDeletedTaskId(taskId);

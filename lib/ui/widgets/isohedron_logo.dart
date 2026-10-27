@@ -73,7 +73,8 @@ class _IsohedronPainter extends CustomPainter {
     final innerR = r * 0.48;
     final inner = List.generate(3, (i) {
       final angle = -math.pi / 2 + i * (2 * math.pi / 3);
-      return Offset(cx + innerR * math.cos(angle), cy + innerR * math.sin(angle));
+      return Offset(
+          cx + innerR * math.cos(angle), cy + innerR * math.sin(angle));
     });
 
     // Outer points:
@@ -147,7 +148,8 @@ class _IsohedronPainter extends CustomPainter {
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.0, size.width * 0.024)
-      ..color = const Color(0xFFF5F0E8).withValues(alpha: 0.85) // Linen facet borders
+      ..color =
+          const Color(0xFFF5F0E8).withValues(alpha: 0.85) // Linen facet borders
       ..strokeJoin = StrokeJoin.round;
 
     for (final facet in facets) {

@@ -44,7 +44,9 @@ void main() {
       expect(scheduled.id, notificationService.computeNotificationId('task-1'));
     });
 
-    test('Review Focus: handles past planned time safely with immediate trigger', () async {
+    test(
+        'Review Focus: handles past planned time safely with immediate trigger',
+        () async {
       final pastTime = DateTime.now().subtract(const Duration(minutes: 15));
       final task = TaskItem(
         id: 'task-past',
@@ -59,7 +61,8 @@ void main() {
       // Should deliver immediate notification rather than scheduling in past
       expect(mockAdapter.immediate.length, 1);
       expect(mockAdapter.scheduled.isEmpty, isTrue);
-      expect(mockAdapter.immediate.first.title, contains('Overdue task reminder'));
+      expect(
+          mockAdapter.immediate.first.title, contains('Overdue task reminder'));
     });
 
     test('does not schedule reminder if task has no plannedTime', () async {

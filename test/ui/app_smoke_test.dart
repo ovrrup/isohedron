@@ -46,7 +46,8 @@ void main() {
       expect(appController.visibleTasks, isEmpty);
     });
 
-    test('adds task with planned reminder and schedules notification', () async {
+    test('adds task with planned reminder and schedules notification',
+        () async {
       final planned = DateTime.now().add(const Duration(hours: 3));
       final task = await appController.createTask(
         title: 'Draft quarterly report',
@@ -60,7 +61,8 @@ void main() {
 
       // Verify notification adapter received the scheduled reminder
       expect(mockNotifications.scheduled.length, 1);
-      expect(mockNotifications.scheduled.first.title, contains('Draft quarterly report'));
+      expect(mockNotifications.scheduled.first.title,
+          contains('Draft quarterly report'));
     });
 
     test('marks task completed and clears scheduled reminder', () async {
@@ -86,7 +88,8 @@ void main() {
       expect(mockNotifications.scheduled, isEmpty);
     });
 
-    test('cancels task with reflection reason prompt and stores reason', () async {
+    test('cancels task with reflection reason prompt and stores reason',
+        () async {
       final task = await appController.createTask(
         title: 'Run 5 kilometers',
         plannedTime: DateTime.now().add(const Duration(hours: 1)),
@@ -108,13 +111,15 @@ void main() {
       expect(cancelled.cancelReason, 'Heavy thunderstorm outside');
     });
 
-    test('completing a previously cancelled task clears cancellation reason', () async {
+    test('completing a previously cancelled task clears cancellation reason',
+        () async {
       final task = await appController.createTask(title: 'Reactivated task');
       await appController.cancelTask(task.id, reason: 'Deferred');
 
       // Now mark completed
       await appController.completeTask(task.id);
-      final completed = (await storage.getTasks('local_default')).firstWhere((t) => t.id == task.id);
+      final completed = (await storage.getTasks('local_default'))
+          .firstWhere((t) => t.id == task.id);
 
       expect(completed.isCompleted, isTrue);
       expect(completed.isCancelled, isFalse);
@@ -127,7 +132,8 @@ void main() {
       await expectLater(appController.syncCurrentList(), completes);
     });
 
-    test('onboarding state defaults to false and switches to completed', () async {
+    test('onboarding state defaults to false and switches to completed',
+        () async {
       expect(appController.hasCompletedOnboarding, isFalse);
       await appController.completeOnboarding();
       expect(appController.hasCompletedOnboarding, isTrue);

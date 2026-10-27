@@ -70,7 +70,8 @@ void main() {
     });
 
     test('extracts [Cancelled: <reason> on <date>] and marks isCancelled', () {
-      const raw = 'Submit taxes\n---\n[Cancelled: Procrastinated and lacked documents on 2026-10-27]';
+      const raw =
+          'Submit taxes\n---\n[Cancelled: Procrastinated and lacked documents on 2026-10-27]';
       final task = TaskItem.parseFromGoogleTask(
         id: 'task-3',
         taskListId: 'list-1',
@@ -86,7 +87,8 @@ void main() {
     });
 
     test('Review Focus: gracefully handles corrupted or malformed tags', () {
-      const malformed = 'My note\n[Planned: not-a-date]\n[Cancelled: missing-on-clause]';
+      const malformed =
+          'My note\n[Planned: not-a-date]\n[Cancelled: missing-on-clause]';
       final task = TaskItem.parseFromGoogleTask(
         id: 'task-4',
         taskListId: 'list-1',
@@ -103,8 +105,11 @@ void main() {
       expect(task.notes, 'My note');
     });
 
-    test('cancellation reason does not strip text containing word on without date', () {
-      const note = 'Bugfix task\n---\n[Cancelled: Stuck on backend database issue]';
+    test(
+        'cancellation reason does not strip text containing word on without date',
+        () {
+      const note =
+          'Bugfix task\n---\n[Cancelled: Stuck on backend database issue]';
       final task = TaskItem.parseFromGoogleTask(
         id: 'task-on-word',
         taskListId: 'list-1',
@@ -149,7 +154,8 @@ void main() {
 
       expect(googleNotes, contains('Original user note'));
       expect(googleNotes, contains('[Planned: 2026-10-27T18:00:00.000Z]'));
-      expect(googleNotes, contains('[Cancelled: Rain delayed the outdoor plan'));
+      expect(
+          googleNotes, contains('[Cancelled: Rain delayed the outdoor plan'));
     });
 
     test('JSON serialization toMap/fromMap preserves all state', () {

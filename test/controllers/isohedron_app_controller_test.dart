@@ -48,7 +48,8 @@ void main() {
       expect(controller.overdueTasks, isEmpty);
     });
 
-    test('notifies listeners when creating, completing, and deleting tasks', () async {
+    test('notifies listeners when creating, completing, and deleting tasks',
+        () async {
       int notifyCount = 0;
       controller.addListener(() {
         notifyCount++;

@@ -54,7 +54,8 @@ class TaskItem {
             // Malformed date: ignore and leave parsedPlannedTime null
           }
         }
-        cleanedNotes = cleanedNotes.replaceAll(plannedMatch.group(0)!, '').trim();
+        cleanedNotes =
+            cleanedNotes.replaceAll(plannedMatch.group(0)!, '').trim();
       }
 
       // Check for cancellation reflection
@@ -62,7 +63,7 @@ class TaskItem {
       if (cancelledMatch != null) {
         parsedIsCancelled = true;
         final rawReason = cancelledMatch.group(1)?.trim() ?? '';
-        
+
         // Strip trailing " on YYYY-MM-DD" if present
         final onDateRegex = RegExp(r'\s+on\s+\d{4}-\d{2}-\d{2}$');
         final match = onDateRegex.firstMatch(rawReason);
@@ -72,13 +73,12 @@ class TaskItem {
           parsedCancelReason = rawReason;
         }
 
-        cleanedNotes = cleanedNotes.replaceAll(cancelledMatch.group(0)!, '').trim();
+        cleanedNotes =
+            cleanedNotes.replaceAll(cancelledMatch.group(0)!, '').trim();
       }
 
       // Clean up separation markers like "---" left by note formatting
-      cleanedNotes = cleanedNotes
-          .replaceAll(RegExp(r'\n---\n*'), '\n')
-          .trim();
+      cleanedNotes = cleanedNotes.replaceAll(RegExp(r'\n---\n*'), '\n').trim();
     }
 
     return TaskItem(
@@ -152,7 +152,8 @@ class TaskItem {
       plannedTime: clearPlannedTime ? null : (plannedTime ?? this.plannedTime),
       isCompleted: isCompleted ?? this.isCompleted,
       isCancelled: isCancelled ?? this.isCancelled,
-      cancelReason: clearCancelReason ? null : (cancelReason ?? this.cancelReason),
+      cancelReason:
+          clearCancelReason ? null : (cancelReason ?? this.cancelReason),
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }

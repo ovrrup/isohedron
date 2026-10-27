@@ -137,7 +137,8 @@ void main() {
         due: DateTime.utc(now.year, now.month, now.day),
         updatedAt: now,
       );
-      final utcFiltered = storage.filterTasks([utcMidnightTask], TaskFilter.today);
+      final utcFiltered =
+          storage.filterTasks([utcMidnightTask], TaskFilter.today);
       expect(utcFiltered.length, 1);
 
       // Planned filter
@@ -187,7 +188,8 @@ void main() {
       expect(await storage.getGoogleUserEmail(), isNull);
     });
 
-    test('replaces local task ID with remote task item without duplicates', () async {
+    test('replaces local task ID with remote task item without duplicates',
+        () async {
       final localTask = TaskItem(
         id: 'local_task_12345',
         taskListId: 'local_default',
@@ -211,10 +213,13 @@ void main() {
       expect(tasks.first.id, 'gtasks_remote_98765');
     });
 
-    test('records deletion tombstones for remote IDs but skips ephemeral local IDs', () async {
+    test(
+        'records deletion tombstones for remote IDs but skips ephemeral local IDs',
+        () async {
       // Local ephemeral task
       await storage.deleteTask('local_default', 'local_task_ephemeral');
-      expect(storage.getDeletedTaskIds(), isNot(contains('local_task_ephemeral')));
+      expect(
+          storage.getDeletedTaskIds(), isNot(contains('local_task_ephemeral')));
 
       // Remote task
       await storage.deleteTask('local_default', 'remote_gtask_123');
@@ -228,7 +233,8 @@ void main() {
     test('creates and deletes task lists with cascade cleanup', () async {
       final created = await storage.createTaskList('Project Falcon');
       expect(created.title, 'Project Falcon');
-      expect((await storage.getTaskLists()).any((l) => l.id == created.id), isTrue);
+      expect((await storage.getTaskLists()).any((l) => l.id == created.id),
+          isTrue);
 
       final task = TaskItem(
         id: 'task-in-falcon',
@@ -240,7 +246,8 @@ void main() {
       expect((await storage.getTasks(created.id)).length, 1);
 
       await storage.deleteTaskList(created.id);
-      expect((await storage.getTaskLists()).any((l) => l.id == created.id), isFalse);
+      expect((await storage.getTaskLists()).any((l) => l.id == created.id),
+          isFalse);
       expect(await storage.getTasks(created.id), isEmpty);
     });
 

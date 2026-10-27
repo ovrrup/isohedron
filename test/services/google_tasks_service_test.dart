@@ -62,7 +62,8 @@ void main() {
 
       final lists = await googleService.fetchTaskLists();
       expect(lists.length, 2);
-      expect(lists.map((l) => l.title), containsAll(['Google My Tasks', 'Work Projects']));
+      expect(lists.map((l) => l.title),
+          containsAll(['Google My Tasks', 'Work Projects']));
 
       final tasks = await googleService.fetchTasks('g-list-default');
       expect(tasks.length, 1);
@@ -126,7 +127,8 @@ void main() {
 
     test('connectWithToken and signInSilently support', () async {
       expect(googleService.isAuthenticated, isFalse);
-      final connected = await googleService.connectWithToken('test-token', email: 'custom@domain.com');
+      final connected = await googleService.connectWithToken('test-token',
+          email: 'custom@domain.com');
       expect(connected, isTrue);
       expect(googleService.isAuthenticated, isTrue);
 
@@ -137,7 +139,8 @@ void main() {
       expect(googleService.isAuthenticated, isFalse);
     });
 
-    test('syncList propagates local deletions and promotes local_task_ IDs', () async {
+    test('syncList propagates local deletions and promotes local_task_ IDs',
+        () async {
       await googleService.signIn();
 
       // 1. Add task with local_task_ prefix
@@ -158,7 +161,8 @@ void main() {
       expect(localAfter.any((t) => t.title == 'Offline created idea'), isTrue);
 
       // 2. Delete remote task locally and sync
-      final remoteTaskToDelete = localAfter.firstWhere((t) => t.title == 'Offline created idea');
+      final remoteTaskToDelete =
+          localAfter.firstWhere((t) => t.title == 'Offline created idea');
       await storage.deleteTask('g-list-default', remoteTaskToDelete.id);
       expect(storage.getDeletedTaskIds(), contains(remoteTaskToDelete.id));
 
@@ -166,8 +170,10 @@ void main() {
 
       // Remote backend should now no longer have it, and tombstone is purged
       final remoteTasksAfter = await googleService.fetchTasks('g-list-default');
-      expect(remoteTasksAfter.any((t) => t.id == remoteTaskToDelete.id), isFalse);
-      expect(storage.getDeletedTaskIds(), isNot(contains(remoteTaskToDelete.id)));
+      expect(
+          remoteTasksAfter.any((t) => t.id == remoteTaskToDelete.id), isFalse);
+      expect(
+          storage.getDeletedTaskIds(), isNot(contains(remoteTaskToDelete.id)));
     });
 
     test('LiveGoogleTasksClient exposes default GCP Client ID', () {

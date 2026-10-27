@@ -7,12 +7,14 @@ import 'package:isohedron/ui/task_list_switcher.dart';
 void main() {
   group('CancelReasonController', () {
     test('provides preset standard reflection reasons', () {
-      expect(CancelReasonController.presetReasons, containsAll([
-        'Ran out of time',
-        'Deprioritized',
-        'Waiting on something',
-        'No longer needed',
-      ]));
+      expect(
+          CancelReasonController.presetReasons,
+          containsAll([
+            'Ran out of time',
+            'Deprioritized',
+            'Waiting on something',
+            'No longer needed',
+          ]));
     });
 
     test('resolves selected preset chip', () {
