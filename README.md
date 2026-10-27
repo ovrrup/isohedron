@@ -69,8 +69,17 @@ dart test
 dart analyze
 ```
 
-### Automated CI / CD
-GitHub Actions automatically runs on every push:
-* **Lint & Tests:** Runs analysis and unit tests on `ubuntu-latest`.
-* **Android Build:** Compiles the Android APK and uploads release artifacts.
-* **iOS Build:** Verifies macOS / iOS compilation without codesigning.
+### Automated CI / CD & Nightly Releases
+
+1. **Pull Requests & Push Checks (`.github/workflows/build.yml`):**
+   * **Lint & Tests:** Runs analysis and unit tests on `ubuntu-latest`.
+   * **Android Build:** Compiles the Android APK and uploads release artifacts.
+   * **iOS Build:** Verifies macOS / iOS compilation without codesigning.
+
+2. **Nightly Release Channel (`.github/workflows/nightly.yml`):**
+   * Runs daily at **02:00 UTC** and via manual dispatch.
+   * **Commit-Aware:** Automatically skips if no new commits landed on `main`.
+   * **Zero Clutter:** Automatically purges the previous nightly release and tag before publishing, maintaining a single rolling release.
+   * **Cryptographic APK Signing:** Signed with an official Android Release Keystore (`apksigner`) using GitHub Repository Secrets.
+   * **Download Latest Nightly:** [Isohedron Nightly Build](https://github.com/ovrrup/isohedron/releases/tag/nightly)
+   * See [docs/SIGNING.md](docs/SIGNING.md) for signing credentials and key generation guide.
