@@ -171,65 +171,6 @@ void main() {
       expect(searchedCancelled.first.id, '5');
     });
 
-    test('persists and clears Google auth token and email', () async {
-      expect(await storage.getGoogleAccessToken(), isNull);
-      expect(await storage.getGoogleUserEmail(), isNull);
-
-      await storage.saveGoogleAuth(
-        token: 'ya29.sample_test_token',
-        email: 'user@example.com',
-      );
-
-      expect(await storage.getGoogleAccessToken(), 'ya29.sample_test_token');
-      expect(await storage.getGoogleUserEmail(), 'user@example.com');
-
-      await storage.clearGoogleAuth();
-      expect(await storage.getGoogleAccessToken(), isNull);
-      expect(await storage.getGoogleUserEmail(), isNull);
-    });
-
-    test('replaces local task ID with remote task item without duplicates',
-        () async {
-      final localTask = TaskItem(
-        id: 'local_task_12345',
-        taskListId: 'local_default',
-        title: 'Draft proposal',
-        updatedAt: DateTime.now(),
-      );
-
-      await storage.upsertTask(localTask);
-      expect((await storage.getTasks('local_default')).length, 1);
-
-      final remoteTask = TaskItem(
-        id: 'gtasks_remote_98765',
-        taskListId: 'local_default',
-        title: 'Draft proposal',
-        updatedAt: DateTime.now(),
-      );
-
-      await storage.replaceTaskId('local_task_12345', remoteTask);
-      final tasks = await storage.getTasks('local_default');
-      expect(tasks.length, 1);
-      expect(tasks.first.id, 'gtasks_remote_98765');
-    });
-
-    test(
-        'records deletion tombstones for remote IDs but skips ephemeral local IDs',
-        () async {
-      // Local ephemeral task
-      await storage.deleteTask('local_default', 'local_task_ephemeral');
-      expect(
-          storage.getDeletedTaskIds(), isNot(contains('local_task_ephemeral')));
-
-      // Remote task
-      await storage.deleteTask('local_default', 'remote_gtask_123');
-      expect(storage.getDeletedTaskIds(), contains('remote_gtask_123'));
-
-      // Purge tombstone
-      await storage.purgeDeletedTaskId('remote_gtask_123');
-      expect(storage.getDeletedTaskIds(), isNot(contains('remote_gtask_123')));
-    });
-
     test('creates and deletes task lists with cascade cleanup', () async {
       final created = await storage.createTaskList('Project Falcon');
       expect(created.title, 'Project Falcon');

@@ -7,11 +7,8 @@ import '../models/task_list.dart';
 class StorageService {
   final File? _storageFile;
   final Map<String, List<TaskItem>> _tasksByList = {};
-  final Set<String> _deletedTaskIds = {};
   List<TaskList> _taskLists = [];
   String _selectedTaskListId = 'local_default';
-  String? _googleAccessToken;
-  String? _googleUserEmail;
   bool _hasCompletedOnboarding = false;
 
   StorageService({File? storageFile}) : _storageFile = storageFile;
@@ -90,8 +87,6 @@ class StorageService {
 
     _selectedTaskListId =
         (data['selectedTaskListId'] as String?) ?? 'local_default';
-    _googleAccessToken = data['googleAccessToken'] as String?;
-    _googleUserEmail = data['googleUserEmail'] as String?;
     _hasCompletedOnboarding =
         (data['hasCompletedOnboarding'] as bool?) ?? false;
 
@@ -115,12 +110,6 @@ class StorageService {
       });
     }
 
-    final deletedData = data['deletedTaskIds'] as List<dynamic>?;
-    _deletedTaskIds.clear();
-    if (deletedData != null) {
-      _deletedTaskIds.addAll(deletedData.cast<String>());
-    }
-
     return true;
   }
 
@@ -131,14 +120,11 @@ class StorageService {
     try {
       final data = {
         'selectedTaskListId': _selectedTaskListId,
-        'googleAccessToken': _googleAccessToken,
-        'googleUserEmail': _googleUserEmail,
         'hasCompletedOnboarding': _hasCompletedOnboarding,
         'taskLists': _taskLists.map((l) => l.toMap()).toList(),
         'tasks': _tasksByList.map(
           (k, v) => MapEntry(k, v.map((t) => t.toMap()).toList()),
         ),
-        'deletedTaskIds': _deletedTaskIds.toList(),
       };
       final jsonString = jsonEncode(data);
 
@@ -175,12 +161,12 @@ class StorageService {
     await _persist();
   }
 
-  Future<TaskList> createTaskList(String title, {bool isLocal = true}) async {
+  Future<TaskList> createTaskList(String title) async {
     final list = TaskList(
       id: 'list_${DateTime.now().microsecondsSinceEpoch}',
       title: title.trim().isEmpty ? 'Untitled List' : title.trim(),
       isDefault: false,
-      isLocal: isLocal,
+      isLocal: true,
     );
     _taskLists.add(list);
     await _persist();
@@ -223,24 +209,6 @@ class StorageService {
     } else {
       list.add(task);
     }
-    // If the task was previously tombstoned, untombstone it
-    _deletedTaskIds.remove(task.id);
-    await _persist();
-  }
-
-  Future<void> replaceTaskId(String oldId, TaskItem newTask) async {
-    final list = _tasksByList[newTask.taskListId];
-    if (list != null) {
-      final index = list.indexWhere((t) => t.id == oldId);
-      if (index >= 0) {
-        list[index] = newTask;
-      } else {
-        list.add(newTask);
-      }
-    } else {
-      _tasksByList[newTask.taskListId] = [newTask];
-    }
-    _deletedTaskIds.remove(oldId);
     await _persist();
   }
 
@@ -249,21 +217,7 @@ class StorageService {
     if (list != null) {
       list.removeWhere((t) => t.id == taskId);
     }
-    // Only track tombstones for remote IDs or persistent keys to sync deletion
-    if (!taskId.startsWith('local_task_')) {
-      _deletedTaskIds.add(taskId);
-    }
     await _persist();
-  }
-
-  // --- Deletion Tombstones ---
-
-  Set<String> getDeletedTaskIds() => Set.unmodifiable(_deletedTaskIds);
-
-  Future<void> purgeDeletedTaskId(String taskId) async {
-    if (_deletedTaskIds.remove(taskId)) {
-      await _persist();
-    }
   }
 
   // --- Calendar & Timezone Date Helpers ---
@@ -275,13 +229,6 @@ class StorageService {
   }
 
   static bool isDueOnDate(DateTime due, DateTime referenceDate) {
-    final refLocal = referenceDate.toLocal();
-    // Google Tasks date-only due dates arrive as UTC midnight (00:00:00.000Z)
-    if (due.isUtc && due.hour == 0 && due.minute == 0 && due.second == 0) {
-      return due.year == refLocal.year &&
-          due.month == refLocal.month &&
-          due.day == refLocal.day;
-    }
     return isSameCalendarDay(due, referenceDate);
   }
 
@@ -334,22 +281,5 @@ class StorageService {
     });
 
     return filtered;
-  }
-
-  // --- Auth Persistence ---
-
-  Future<String?> getGoogleAccessToken() async => _googleAccessToken;
-  Future<String?> getGoogleUserEmail() async => _googleUserEmail;
-
-  Future<void> saveGoogleAuth({String? token, String? email}) async {
-    _googleAccessToken = token;
-    _googleUserEmail = email;
-    await _persist();
-  }
-
-  Future<void> clearGoogleAuth() async {
-    _googleAccessToken = null;
-    _googleUserEmail = null;
-    await _persist();
   }
 }

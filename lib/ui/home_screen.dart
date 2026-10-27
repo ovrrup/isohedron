@@ -3,7 +3,6 @@
 import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
 import '../models/task_filter.dart';
 import '../models/task_item.dart';
@@ -144,42 +143,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: 20,
                 ),
               ),
-
-              // Sync Google Tasks (if applicable)
-              if (controller.isGoogleConnected &&
-                  !controller.currentList.isLocal)
-                CupertinoButton(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minSize: 36,
-                  onPressed: controller.isSyncing
-                      ? null
-                      : () async {
-                          unawaited(HapticFeedback.lightImpact());
-                          await controller.syncCurrentList();
-                        },
-                  child: controller.isSyncing
-                      ? const CupertinoActivityIndicator(radius: 8)
-                      : Icon(
-                          CupertinoIcons.arrow_2_circlepath,
-                          color: systemBlue,
-                          size: 20,
-                        ),
-                ),
-
-              // Account & Sync options
+              // About Isohedron Info button
               CupertinoButton(
                 padding: const EdgeInsets.only(right: 16, left: 4),
                 minSize: 36,
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  _showAccountDialog(context);
+                  _showAboutDialog(context);
                 },
                 child: Icon(
-                  controller.isGoogleConnected
-                      ? CupertinoIcons.person_crop_circle_fill
-                      : CupertinoIcons.person_crop_circle,
-                  color:
-                      controller.isGoogleConnected ? systemBlue : textSecondary,
+                  CupertinoIcons.info_circle,
+                  color: systemBlue,
                   size: 22,
                 ),
               ),
@@ -507,10 +481,8 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  list.isLocal
-                      ? CupertinoIcons.device_phone_portrait
-                      : CupertinoIcons.cloud,
+                const Icon(
+                  CupertinoIcons.folder,
                   size: 16,
                 ),
                 const SizedBox(width: 8),
@@ -537,10 +509,10 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showAccountDialog(BuildContext context) {
+  void _showAboutDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (ctx) => _GoogleAccountDialog(
+      builder: (ctx) => _AboutIsohedronDialog(
         controller: controller,
       ),
     );
@@ -760,293 +732,119 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _GoogleAccountDialog extends StatefulWidget {
+class _AboutIsohedronDialog extends StatelessWidget {
   final IsohedronAppController controller;
 
-  const _GoogleAccountDialog({
-    required this.controller,
-  });
-
-  @override
-  State<_GoogleAccountDialog> createState() => _GoogleAccountDialogState();
-}
-
-class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  final _tokenController = TextEditingController();
-  final _emailController = TextEditingController();
-  bool _isLoading = false;
-  String? _statusError;
-  bool _showTokenGuide = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    _tokenController.dispose();
-    _emailController.dispose();
-    super.dispose();
-  }
+  const _AboutIsohedronDialog({required this.controller});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isConnected = widget.controller.isGoogleConnected;
+    final isDark = theme.brightness == Brightness.dark;
 
     return AlertDialog(
-      title: Row(
-        children: [
-          const IsohedronLogo(size: 24),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isConnected ? 'Connected Account' : 'Account & Sync',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
+      title: const Center(
+        child: IsohedronLogo(size: 44, showText: true),
       ),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: SingleChildScrollView(
-          child: isConnected
-              ? _buildConnectedView(theme)
-              : _buildConnectOptions(theme),
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 6),
+            Text(
+              'Sovereign Task Sanctuary',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'A minimal, geometric space designed for quiet focus and reflection.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark
+                    ? AppTheme.darkTextSecondary
+                    : AppTheme.lightTextSecondary,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.shield_outlined,
+                    color: theme.colorScheme.primary,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '100% Offline & Private',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Your tasks and reflection logs are stored locally on this device.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark
+                                ? AppTheme.darkTextSecondary
+                                : AppTheme.lightTextSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
       actions: [
-        TextButton(
+        TextButton.icon(
           onPressed: () {
             Navigator.of(context).pop();
             Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => OnboardingScreen(controller: widget.controller),
+                builder: (_) => OnboardingScreen(controller: controller),
               ),
             );
           },
-          child: const Text('Revisit Onboarding'),
+          icon: const Icon(Icons.menu_book_rounded, size: 18),
+          label: const Text('Welcome Guide'),
         ),
-        TextButton(
+        FilledButton(
           onPressed: () => Navigator.of(context).pop(),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
           child: const Text('Close'),
         ),
       ],
-    );
-  }
-
-  Widget _buildConnectedView(ThemeData theme) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: const CircleAvatar(
-            child: Icon(Icons.check),
-          ),
-          title: Text(widget.controller.googleEmail ?? 'Google Account'),
-          subtitle: const Text('Google Tasks sync active'),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.tonal(
-          onPressed: () async {
-            Navigator.of(context).pop();
-            await widget.controller.syncCurrentList();
-          },
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.sync, size: 18),
-              SizedBox(width: 8),
-              Text('Sync Current List Now'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: () async {
-            await widget.controller.signOutGoogle();
-            setState(() {});
-          },
-          child: const Center(child: Text('Sign Out & Switch to Local Only')),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildConnectOptions(ThemeData theme) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Connect with Google Tasks for cloud synchronization across devices:',
-          style: TextStyle(fontSize: 13),
-        ),
-        const SizedBox(height: 12),
-        TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Google Sign-In'),
-            Tab(text: 'Direct Token'),
-          ],
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: _showTokenGuide ? 240 : 160,
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildSignInTab(theme),
-              _buildTokenTab(theme),
-            ],
-          ),
-        ),
-        if (_statusError != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _statusError!,
-            style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildSignInTab(ThemeData theme) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Text(
-          'One-tap sign-in via Google Play Services.',
-          style: TextStyle(fontSize: 12),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          icon: _isLoading
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.login),
-          label: const Text('Sign In with Google'),
-          onPressed: _isLoading
-              ? null
-              : () async {
-                  setState(() {
-                    _isLoading = true;
-                    _statusError = null;
-                  });
-                  try {
-                    final ok = await widget.controller.signInGoogle();
-                    if (!ok && mounted) {
-                      setState(() {
-                        _statusError = widget.controller.googleLastError ??
-                            'Sign in cancelled or failed';
-                      });
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      setState(() {
-                        _statusError = e.toString();
-                      });
-                    }
-                  } finally {
-                    if (mounted) {
-                      setState(() {
-                        _isLoading = false;
-                      });
-                    }
-                  }
-                },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTokenTab(ThemeData theme) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          TextField(
-            controller: _emailController,
-            decoration: const InputDecoration(
-              labelText: 'Account Email (optional)',
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _tokenController,
-            decoration: const InputDecoration(
-              labelText: 'OAuth Access Token (ya29...)',
-              isDense: true,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _showTokenGuide = !_showTokenGuide;
-                  });
-                },
-                child:
-                    Text(_showTokenGuide ? 'Hide Info' : 'Where to get token?'),
-              ),
-              FilledButton(
-                onPressed: _isLoading
-                    ? null
-                    : () async {
-                        final token = _tokenController.text.trim();
-                        if (token.isEmpty) return;
-                        setState(() {
-                          _isLoading = true;
-                          _statusError = null;
-                        });
-                        try {
-                          final ok =
-                              await widget.controller.connectGoogleWithToken(
-                            token,
-                            email: _emailController.text.trim(),
-                          );
-                          if (!ok && mounted) {
-                            setState(() {
-                              _statusError =
-                                  widget.controller.googleLastError ??
-                                      'Token connection failed';
-                            });
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            setState(() {
-                              _statusError = e.toString();
-                            });
-                          }
-                        } finally {
-                          if (mounted) {
-                            setState(() {
-                              _isLoading = false;
-                            });
-                          }
-                        }
-                      },
-                child: const Text('Connect Token'),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

@@ -8,8 +8,7 @@ import '../theme/app_theme.dart';
 
 class TaskListSwitcherHelper {
   static String formatLabel(TaskList list) {
-    final type = list.isLocal ? 'Local' : 'Google';
-    return '${list.title} ($type)';
+    return list.title;
   }
 }
 
@@ -22,23 +21,19 @@ class TaskListSwitcherState {
     required this.selectedListId,
   });
 
+  bool get hasMultipleLists => availableLists.length > 1;
+
   TaskList get currentList {
     return availableLists.firstWhere(
       (l) => l.id == selectedListId,
       orElse: () => availableLists.isNotEmpty
           ? availableLists.first
-          : const TaskList(
-              id: 'local_default',
-              title: 'My Tasks',
-              isLocal: true,
-            ),
+          : const TaskList(id: 'local_default', title: 'My Tasks'),
     );
   }
-
-  String get currentLabel => TaskListSwitcherHelper.formatLabel(currentList);
 }
 
-/// Authentic iOS Cupertino task list switcher pill / action sheet.
+/// Authentic iOS Navigation bar dropdown switcher for task lists.
 class TaskListSwitcherDropdown extends StatelessWidget {
   final List<TaskList> availableLists;
   final String selectedListId;
@@ -76,9 +71,7 @@ class TaskListSwitcherDropdown extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  list.isLocal
-                      ? CupertinoIcons.device_phone_portrait
-                      : CupertinoIcons.cloud,
+                  CupertinoIcons.folder,
                   size: 16,
                   color: isSelected ? primaryColor : AppTheme.systemGray,
                 ),
@@ -114,8 +107,7 @@ class TaskListSwitcherDropdown extends StatelessWidget {
       (l) => l.id == selectedListId,
       orElse: () => availableLists.isNotEmpty
           ? availableLists.first
-          : const TaskList(
-              id: 'local_default', title: 'My Tasks', isLocal: true),
+          : const TaskList(id: 'local_default', title: 'My Tasks'),
     );
 
     return CupertinoButton(
@@ -134,9 +126,7 @@ class TaskListSwitcherDropdown extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              current.isLocal
-                  ? CupertinoIcons.device_phone_portrait
-                  : CupertinoIcons.cloud,
+              CupertinoIcons.folder,
               size: 14,
               color: isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue,
             ),

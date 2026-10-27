@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../controllers/isohedron_app_controller.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'widgets/isohedron_logo.dart';
@@ -19,9 +20,6 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  bool _isSigningIn = false;
-  String? _signInFeedback;
-
   IsohedronAppController get controller => widget.controller;
 
   Future<void> _proceedToHome() async {
@@ -39,262 +37,117 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _showTokenSheet() {
-    final tokenController = TextEditingController();
-    final emailController = TextEditingController();
-
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final sheetBg = isDark
-            ? AppTheme.darkSecondaryGroupedBackground
-            : AppTheme.lightSecondaryGroupedBackground;
-        final inputBg = isDark
-            ? AppTheme.darkTertiaryGroupedBackground
-            : AppTheme.systemGray6Light;
-
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: sheetBg,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(16),
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        minSize: 32,
-                        onPressed: () => Navigator.of(ctx).pop(),
-                        child: const Text('Cancel'),
-                      ),
-                      const Text(
-                        'Direct OAuth Token',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        minSize: 32,
-                        onPressed: () async {
-                          final token = tokenController.text.trim();
-                          if (token.isEmpty) return;
-                          Navigator.of(ctx).pop();
-                          setState(() => _isSigningIn = true);
-                          final ok = await controller.connectGoogleWithToken(
-                            token,
-                            email: emailController.text.trim(),
-                          );
-                          if (ok) {
-                            await _proceedToHome();
-                          } else {
-                            setState(() {
-                              _isSigningIn = false;
-                              _signInFeedback =
-                                  'Token connection failed: ${controller.googleLastError}';
-                            });
-                          }
-                        },
-                        child: const Text(
-                          'Connect',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  CupertinoTextField(
-                    controller: emailController,
-                    placeholder: 'Account Email (optional)',
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: inputBg,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  CupertinoTextField(
-                    controller: tokenController,
-                    placeholder: 'OAuth Bearer Token (ya29...)',
-                    maxLines: 2,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: inputBg,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final scaffoldBg = isDark
-        ? AppTheme.darkSystemGroupedBackground
-        : AppTheme.lightSystemGroupedBackground;
-
+    final bg = isDark
+        ? AppTheme.darkSecondaryGroupedBackground
+        : AppTheme.lightSecondaryGroupedBackground;
     final textPrimary =
         isDark ? AppTheme.darkLabelPrimary : AppTheme.lightLabelPrimary;
-
     final textSecondary =
         isDark ? AppTheme.darkLabelSecondary : AppTheme.lightLabelSecondary;
-
     final systemBlue = isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue;
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
+      backgroundColor: bg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Spacer(flex: 2),
-
-              // Apple App Header
-              const IsohedronLogo(size: 64),
-              const SizedBox(height: 18),
-              Text(
-                'Welcome to',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.4,
-                  color: textPrimary,
-                ),
-              ),
-              Text(
-                'Isohedron',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.5,
-                  color: systemBlue,
-                ),
-              ),
-
-              const Spacer(flex: 2),
-
-              // Feature Rows in Apple HIG Style
-              _FeatureRow(
-                icon: CupertinoIcons.checkmark_alt_circle_fill,
-                iconColor: systemBlue,
-                title: 'Minimalist & Direct',
-                subtitle:
-                    'Zero-friction task capture with scheduled reminders and swift organization.',
-                textColor: textPrimary,
-                secondaryColor: textSecondary,
-              ),
-              const SizedBox(height: 24),
-
-              _FeatureRow(
-                icon: CupertinoIcons.arrow_2_circlepath_circle_fill,
-                iconColor:
-                    isDark ? AppTheme.darkSystemOrange : AppTheme.systemOrange,
-                title: 'Accountability Loop',
-                subtitle:
-                    'A gentle reflection pause on postponed tasks helps build realistic momentum.',
-                textColor: textPrimary,
-                secondaryColor: textSecondary,
-              ),
-              const SizedBox(height: 24),
-
-              _FeatureRow(
-                icon: CupertinoIcons.shield_fill,
-                iconColor:
-                    isDark ? AppTheme.darkSystemGreen : AppTheme.systemGreen,
-                title: 'Local-First & Private',
-                subtitle:
-                    'Your data stays offline on your device, with optional Google Tasks cloud sync.',
-                textColor: textPrimary,
-                secondaryColor: textSecondary,
-              ),
-
-              const Spacer(flex: 3),
-
-              if (_signInFeedback != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    _signInFeedback!,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color:
-                          isDark ? AppTheme.darkSystemRed : AppTheme.systemRed,
-                    ),
-                  ),
-                ),
-
-              // Google Tasks quick connect link
-              CupertinoButton(
-                padding: const EdgeInsets.only(bottom: 14),
-                minSize: 32,
-                onPressed: _isSigningIn
-                    ? null
-                    : () async {
-                        unawaited(HapticFeedback.selectionClick());
-                        setState(() {
-                          _isSigningIn = true;
-                          _signInFeedback = null;
-                        });
-                        try {
-                          final ok = await controller.signInGoogle();
-                          if (ok) {
-                            await _proceedToHome();
-                          } else {
-                            // If Google Play is absent, offer direct token
-                            _showTokenSheet();
-                          }
-                        } catch (_) {
-                          _showTokenSheet();
-                        } finally {
-                          if (mounted) setState(() => _isSigningIn = false);
-                        }
-                      },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Icon(CupertinoIcons.cloud, size: 16, color: systemBlue),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Optional Google Tasks Sync',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: systemBlue,
+                    const SizedBox(height: 48),
+
+                    // App Logo with Apple squircle framing
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: systemBlue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Center(
+                        child: IsohedronLogo(size: 48),
                       ),
                     ),
+                    const SizedBox(height: 24),
+
+                    // Large Apple Title
+                    Text(
+                      'Welcome to\nIsohedron',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -1.0,
+                        height: 1.15,
+                        color: textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Mindful intentions for sovereign living.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: textSecondary,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Feature Bullets (SF-style squircle icons)
+                    _buildFeatureItem(
+                      icon: CupertinoIcons.clock_fill,
+                      iconBg: systemBlue,
+                      title: 'Mindful Planning',
+                      description:
+                          'Schedule daily tasks with calm intention rather than stressful deadlines.',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildFeatureItem(
+                      icon: CupertinoIcons.heart_fill,
+                      iconBg:
+                          isDark ? AppTheme.darkSystemRed : AppTheme.systemRed,
+                      title: 'Guilt-Free Overdue Flow',
+                      description:
+                          'Unmet tasks prompt gentle reflection and rescheduling with peace, not guilt.',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildFeatureItem(
+                      icon: CupertinoIcons.shield_fill,
+                      iconBg: isDark
+                          ? AppTheme.darkSystemGreen
+                          : AppTheme.systemGreen,
+                      title: '100% Private & Sovereign',
+                      description:
+                          'Everything lives strictly on this device. No cloud sync, accounts, or telemetry.',
+                      textPrimary: textPrimary,
+                      textSecondary: textSecondary,
+                    ),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
+            ),
 
-              // Pinned Apple Primary Action Button
-              SizedBox(
+            // Pinned Bottom Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
+              child: SizedBox(
                 width: double.infinity,
                 child: CupertinoButton.filled(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   borderRadius: BorderRadius.circular(14),
                   onPressed: _proceedToHome,
                   child: const Text(
@@ -302,44 +155,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: -0.3,
+                      letterSpacing: -0.4,
                     ),
                   ),
                 ),
               ),
-
-              const SizedBox(height: 20),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-class _FeatureRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final Color textColor;
-  final Color secondaryColor;
-
-  const _FeatureRow({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.textColor,
-    required this.secondaryColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildFeatureItem({
+    required IconData icon,
+    required Color iconBg,
+    required String title,
+    required String description,
+    required Color textPrimary,
+    required Color textSecondary,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 36, color: iconColor),
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(
+            icon,
+            color: CupertinoColors.white,
+            size: 24,
+          ),
+        ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -348,20 +199,20 @@ class _FeatureRow extends StatelessWidget {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  letterSpacing: -0.2,
-                  color: textColor,
+                  letterSpacing: -0.3,
+                  color: textPrimary,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
-                subtitle,
+                description,
                 style: TextStyle(
-                  fontSize: 13,
-                  height: 1.3,
-                  letterSpacing: -0.1,
-                  color: secondaryColor,
+                  fontSize: 14,
+                  height: 1.35,
+                  letterSpacing: -0.2,
+                  color: textSecondary,
                 ),
               ),
             ],
