@@ -559,7 +559,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showAccountDialog(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) {
         return AlertDialog(
@@ -603,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final notesController = TextEditingController();
     DateTime? plannedTime;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) {
