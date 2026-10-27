@@ -123,5 +123,18 @@ void main() {
       final remoteTasks = await googleService.fetchTasks('g-list-default');
       expect(remoteTasks.map((t) => t.id), containsAll(['gt-1', 'local-new']));
     });
+
+    test('connectWithToken and signInSilently support', () async {
+      expect(googleService.isAuthenticated, isFalse);
+      final connected = await googleService.connectWithToken('test-token', email: 'custom@domain.com');
+      expect(connected, isTrue);
+      expect(googleService.isAuthenticated, isTrue);
+
+      final silent = await googleService.signInSilently();
+      expect(silent, isTrue);
+
+      await googleService.signOut();
+      expect(googleService.isAuthenticated, isFalse);
+    });
   });
 }

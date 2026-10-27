@@ -9,6 +9,8 @@ class StorageService {
   final Map<String, List<TaskItem>> _tasksByList = {};
   List<TaskList> _taskLists = [];
   String _selectedTaskListId = 'local_default';
+  String? _googleAccessToken;
+  String? _googleUserEmail;
 
   StorageService({File? storageFile}) : _storageFile = storageFile;
 
@@ -30,6 +32,8 @@ class StorageService {
           final data = jsonDecode(content) as Map<String, dynamic>;
           _selectedTaskListId =
               (data['selectedTaskListId'] as String?) ?? 'local_default';
+          _googleAccessToken = data['googleAccessToken'] as String?;
+          _googleUserEmail = data['googleUserEmail'] as String?;
 
           final listsData = data['taskLists'] as List<dynamic>?;
           if (listsData != null && listsData.isNotEmpty) {
@@ -71,6 +75,8 @@ class StorageService {
     try {
       final data = {
         'selectedTaskListId': _selectedTaskListId,
+        'googleAccessToken': _googleAccessToken,
+        'googleUserEmail': _googleUserEmail,
         'taskLists': _taskLists.map((l) => l.toMap()).toList(),
         'tasks': _tasksByList.map(
           (k, v) => MapEntry(k, v.map((t) => t.toMap()).toList()),
@@ -191,5 +197,20 @@ class StorageService {
     });
 
     return filtered;
+  }
+
+  Future<String?> getGoogleAccessToken() async => _googleAccessToken;
+  Future<String?> getGoogleUserEmail() async => _googleUserEmail;
+
+  Future<void> saveGoogleAuth({String? token, String? email}) async {
+    _googleAccessToken = token;
+    _googleUserEmail = email;
+    await _persist();
+  }
+
+  Future<void> clearGoogleAuth() async {
+    _googleAccessToken = null;
+    _googleUserEmail = null;
+    await _persist();
   }
 }

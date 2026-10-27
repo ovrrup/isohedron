@@ -169,5 +169,22 @@ void main() {
       expect(searchedCancelled.length, 1);
       expect(searchedCancelled.first.id, '5');
     });
+
+    test('persists and clears Google auth token and email', () async {
+      expect(await storage.getGoogleAccessToken(), isNull);
+      expect(await storage.getGoogleUserEmail(), isNull);
+
+      await storage.saveGoogleAuth(
+        token: 'ya29.sample_test_token',
+        email: 'user@example.com',
+      );
+
+      expect(await storage.getGoogleAccessToken(), 'ya29.sample_test_token');
+      expect(await storage.getGoogleUserEmail(), 'user@example.com');
+
+      await storage.clearGoogleAuth();
+      expect(await storage.getGoogleAccessToken(), isNull);
+      expect(await storage.getGoogleUserEmail(), isNull);
+    });
   });
 }
