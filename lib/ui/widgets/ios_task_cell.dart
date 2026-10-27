@@ -29,6 +29,7 @@ class IosTaskCell extends StatelessWidget {
   final bool showDivider;
   final bool? isOverdueOverride;
   final ConfirmDismissCallback? confirmDismiss;
+  final DismissDirectionCallback? onDismissed;
 
   const IosTaskCell({
     super.key,
@@ -42,6 +43,7 @@ class IosTaskCell extends StatelessWidget {
     this.showDivider = true,
     this.isOverdueOverride,
     this.confirmDismiss,
+    this.onDismissed,
   });
 
   bool get isOverdue {
@@ -192,13 +194,16 @@ class IosTaskCell extends StatelessWidget {
       confirmDismiss: confirmDismiss ??
           (direction) async {
             if (onDelete != null) {
-              onDelete!(task);
               return true;
             } else if (onCancel != null) {
               onCancel!(task);
               return false;
             }
             return false;
+          },
+      onDismissed: onDismissed ??
+          (direction) {
+            onDelete?.call(task);
           },
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -224,8 +229,8 @@ class IosTaskCell extends StatelessWidget {
                         onToggleComplete?.call(task);
                       },
                       child: Container(
-                        width: 32,
-                        height: 32,
+                        width: 44,
+                        height: 44,
                         alignment: Alignment.center,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -411,7 +416,10 @@ class IosTaskCell extends StatelessWidget {
                                             color: systemOrangeColor,
                                           ),
                                           const SizedBox(width: 4),
-                                          Flexible(
+                                          ConstrainedBox(
+                                            constraints: const BoxConstraints(
+                                              maxWidth: 220,
+                                            ),
                                             child: Text(
                                               task.cancelReason!.trim(),
                                               maxLines: 1,

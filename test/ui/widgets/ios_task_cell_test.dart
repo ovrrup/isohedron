@@ -239,6 +239,64 @@ void main() {
 
       final dismissible = tester.widget<Dismissible>(dismissibleFinder);
       expect(dismissible.direction, DismissDirection.endToStart);
+      expect(dismissible.onDismissed, isNotNull);
+    });
+
+    testWidgets(
+        'checklist toggle has minimum 44x44pt touch hit target for Apple HIG compliance',
+        (tester) async {
+      await tester.pumpWidget(buildTestCell(task: activeTask));
+
+      final toggleFinder = find.byKey(const ValueKey('ios_task_toggle_task-1'));
+      expect(toggleFinder, findsOneWidget);
+
+      final size = tester.getSize(toggleFinder);
+      expect(size.width, greaterThanOrEqualTo(44.0));
+      expect(size.height, greaterThanOrEqualTo(44.0));
+    });
+
+    testWidgets(
+        'Dismissible implements onDismissed and triggers onDelete upon dismissal',
+        (tester) async {
+      TaskItem? dismissedTask;
+      await tester.pumpWidget(
+        buildTestCell(
+          task: activeTask,
+          onDelete: (t) => dismissedTask = t,
+        ),
+      );
+
+      final dismissibleFinder =
+          find.byKey(const ValueKey('ios_task_dismissible_task-1'));
+      final dismissible = tester.widget<Dismissible>(dismissibleFinder);
+      expect(dismissible.onDismissed, isNotNull);
+
+      // Invoke onDismissed directly to verify lifecycle handler
+      dismissible.onDismissed?.call(DismissDirection.endToStart);
+      expect(dismissedTask?.id, 'task-1');
+    });
+
+    testWidgets(
+        'renders cancel reason badge under unbounded constraints without RenderFlex error',
+        (tester) async {
+      final cancelledTask = TaskItem(
+        id: 'task-long-cancel',
+        taskListId: 'list-1',
+        title: 'Long cancel task',
+        isCancelled: true,
+        cancelReason:
+            'A very long cancellation reason that tests bounded constraints in Wrap',
+        updatedAt: DateTime(2026, 10, 27, 14, 0),
+      );
+
+      await tester.pumpWidget(buildTestCell(task: cancelledTask));
+      expect(tester.takeException(), isNull);
+      expect(
+        find.text(
+          'A very long cancellation reason that tests bounded constraints in Wrap',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }
