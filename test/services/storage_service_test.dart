@@ -129,6 +129,17 @@ void main() {
       final dueToday = storage.filterTasks(allTasks, TaskFilter.today);
       expect(dueToday.map((t) => t.id), containsAll(['2', '3']));
 
+      // Timezone normalization test: UTC midnight due date
+      final utcMidnightTask = TaskItem(
+        id: 'utc-today',
+        taskListId: 'local_default',
+        title: 'UTC Midnight Task',
+        due: DateTime.utc(now.year, now.month, now.day),
+        updatedAt: now,
+      );
+      final utcFiltered = storage.filterTasks([utcMidnightTask], TaskFilter.today);
+      expect(utcFiltered.length, 1);
+
       // Planned filter
       final planned = storage.filterTasks(allTasks, TaskFilter.planned);
       expect(planned.map((t) => t.id), contains('3'));

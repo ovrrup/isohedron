@@ -138,8 +138,6 @@ class StorageService {
     String? searchQuery,
   }) {
     final now = DateTime.now();
-    final startOfToday = DateTime(now.year, now.month, now.day);
-    final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
     final filtered = tasks.where((task) {
       switch (filter) {
@@ -149,12 +147,17 @@ class StorageService {
 
         case TaskFilter.today:
           if (task.isCompleted || task.isCancelled) return false;
-          final isDueToday = task.due != null &&
-              task.due!.isAfter(startOfToday.subtract(const Duration(seconds: 1))) &&
-              task.due!.isBefore(endOfToday.add(const Duration(seconds: 1)));
-          final isPlannedToday = task.plannedTime != null &&
-              task.plannedTime!.isAfter(startOfToday.subtract(const Duration(seconds: 1))) &&
-              task.plannedTime!.isBefore(endOfToday.add(const Duration(seconds: 1)));
+          final nowLocal = now.toLocal();
+          final dueLocal = task.due?.toLocal();
+          final isDueToday = dueLocal != null &&
+              dueLocal.year == nowLocal.year &&
+              dueLocal.month == nowLocal.month &&
+              dueLocal.day == nowLocal.day;
+          final plannedLocal = task.plannedTime?.toLocal();
+          final isPlannedToday = plannedLocal != null &&
+              plannedLocal.year == nowLocal.year &&
+              plannedLocal.month == nowLocal.month &&
+              plannedLocal.day == nowLocal.day;
           return isDueToday || isPlannedToday;
 
         case TaskFilter.planned:

@@ -64,9 +64,10 @@ class TaskItem {
         final rawReason = cancelledMatch.group(1)?.trim() ?? '';
         
         // Strip trailing " on YYYY-MM-DD" if present
-        final onIndex = rawReason.lastIndexOf(' on ');
-        if (onIndex != -1) {
-          parsedCancelReason = rawReason.substring(0, onIndex).trim();
+        final onDateRegex = RegExp(r'\s+on\s+\d{4}-\d{2}-\d{2}$');
+        final match = onDateRegex.firstMatch(rawReason);
+        if (match != null) {
+          parsedCancelReason = rawReason.substring(0, match.start).trim();
         } else {
           parsedCancelReason = rawReason;
         }
@@ -131,23 +132,27 @@ class TaskItem {
     String? taskListId,
     String? title,
     String? notes,
+    bool clearNotes = false,
     DateTime? due,
+    bool clearDue = false,
     DateTime? plannedTime,
+    bool clearPlannedTime = false,
     bool? isCompleted,
     bool? isCancelled,
     String? cancelReason,
+    bool clearCancelReason = false,
     DateTime? updatedAt,
   }) {
     return TaskItem(
       id: id ?? this.id,
       taskListId: taskListId ?? this.taskListId,
       title: title ?? this.title,
-      notes: notes ?? this.notes,
-      due: due ?? this.due,
-      plannedTime: plannedTime ?? this.plannedTime,
+      notes: clearNotes ? null : (notes ?? this.notes),
+      due: clearDue ? null : (due ?? this.due),
+      plannedTime: clearPlannedTime ? null : (plannedTime ?? this.plannedTime),
       isCompleted: isCompleted ?? this.isCompleted,
       isCancelled: isCancelled ?? this.isCancelled,
-      cancelReason: cancelReason ?? this.cancelReason,
+      cancelReason: clearCancelReason ? null : (cancelReason ?? this.cancelReason),
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }

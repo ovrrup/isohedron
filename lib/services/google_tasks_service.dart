@@ -175,8 +175,9 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
       cancelReason: task.cancelReason,
     );
 
+    final isLocalId = task.id.startsWith('local_') || task.id.startsWith('task_');
     final gTask = gtasks.Task(
-      id: task.id.startsWith('local_') ? null : task.id,
+      id: isLocalId ? null : task.id,
       title: task.title,
       notes: googleNotes,
       status: (task.isCompleted || task.isCancelled) ? 'completed' : 'needsAction',

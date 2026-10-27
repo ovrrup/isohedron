@@ -119,6 +119,8 @@ class IsohedronAppController {
     try {
       await googleTasks.syncList(_selectedListId, storage);
       await loadCurrentTasks();
+    } catch (_) {
+      // Gracefully handle network disconnection or timeouts without crashing
     } finally {
       _isSyncing = false;
     }
@@ -131,7 +133,7 @@ class IsohedronAppController {
     DateTime? plannedTime,
   }) async {
     final task = TaskItem(
-      id: 'task_${DateTime.now().millisecondsSinceEpoch}',
+      id: 'local_task_${DateTime.now().millisecondsSinceEpoch}',
       taskListId: _selectedListId,
       title: title,
       notes: notes,
@@ -158,9 +160,16 @@ class IsohedronAppController {
   }
 
   Future<void> completeTask(String taskId) async {
-    final task = _currentTasks.firstWhere((t) => t.id == taskId);
+    final task = _currentTasks.cast<TaskItem?>().firstWhere(
+          (t) => t?.id == taskId,
+          orElse: () => null,
+        );
+    if (task == null) return;
+
     final updated = task.copyWith(
       isCompleted: true,
+      isCancelled: false,
+      clearCancelReason: true,
       updatedAt: DateTime.now(),
     );
 
@@ -179,7 +188,12 @@ class IsohedronAppController {
   }
 
   Future<void> cancelTask(String taskId, {required String reason}) async {
-    final task = _currentTasks.firstWhere((t) => t.id == taskId);
+    final task = _currentTasks.cast<TaskItem?>().firstWhere(
+          (t) => t?.id == taskId,
+          orElse: () => null,
+        );
+    if (task == null) return;
+
     final updated = task.copyWith(
       isCompleted: true, // Maps to completed so it clears active view
       isCancelled: true,

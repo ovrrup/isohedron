@@ -103,6 +103,43 @@ void main() {
       expect(task.notes, 'My note');
     });
 
+    test('cancellation reason does not strip text containing word on without date', () {
+      const note = 'Bugfix task\n---\n[Cancelled: Stuck on backend database issue]';
+      final task = TaskItem.parseFromGoogleTask(
+        id: 'task-on-word',
+        taskListId: 'list-1',
+        title: 'Fix issue',
+        rawNotes: note,
+        isCompleted: true,
+        updatedAt: DateTime.now(),
+      );
+
+      expect(task.isCancelled, isTrue);
+      expect(task.cancelReason, 'Stuck on backend database issue');
+    });
+
+    test('TaskItem.copyWith supports clearing nullable fields', () {
+      final task = TaskItem(
+        id: 't-clear',
+        taskListId: 'list-1',
+        title: 'Test clear',
+        plannedTime: DateTime(2026, 10, 27, 10, 0),
+        cancelReason: 'Reason',
+        isCancelled: true,
+        updatedAt: DateTime.now(),
+      );
+
+      final cleared = task.copyWith(
+        clearPlannedTime: true,
+        clearCancelReason: true,
+        isCancelled: false,
+      );
+
+      expect(cleared.plannedTime, isNull);
+      expect(cleared.cancelReason, isNull);
+      expect(cleared.isCancelled, isFalse);
+    });
+
     test('serializes back to Google Notes accurately', () {
       final googleNotes = TaskItem.toGoogleNotes(
         userNotes: 'Original user note',

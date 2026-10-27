@@ -110,8 +110,8 @@ class NotificationService {
   }
 
   int computeNotificationId(String taskId) {
-    // 31-bit positive int hashing to stay well within Android/iOS 32-bit limits
-    return taskId.hashCode.abs() % 2147483647;
+    // 31-bit positive int masking to guarantee non-negative across 32-bit and 64-bit Dart runtimes
+    return (taskId.hashCode & 0x7FFFFFFF) % 2147483647;
   }
 
   Future<void> scheduleTaskReminder(TaskItem task) async {
