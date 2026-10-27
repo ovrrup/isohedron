@@ -8,7 +8,7 @@ class TaskList {
     required this.id,
     required this.title,
     this.isDefault = false,
-    this.isLocal = false,
+    this.isLocal = true,
   });
 
   TaskList copyWith({
@@ -39,7 +39,7 @@ class TaskList {
       id: map['id'] as String,
       title: map['title'] as String,
       isDefault: (map['isDefault'] as bool?) ?? false,
-      isLocal: (map['isLocal'] as bool?) ?? false,
+      isLocal: (map['isLocal'] as bool?) ?? true,
     );
   }
 

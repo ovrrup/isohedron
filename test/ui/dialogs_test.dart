@@ -60,27 +60,17 @@ void main() {
   });
 
   group('TaskListSwitcherHelper', () {
-    test('formats list label with local and google badges', () {
-      const localList = TaskList(
-        id: 'local_default',
-        title: 'Personal',
+    test('formats list label with list title', () {
+      const list = TaskList(
+        id: 'list_1',
+        title: 'Personal Sanctuary',
         isDefault: true,
         isLocal: true,
       );
-      const googleList = TaskList(
-        id: 'g-1',
-        title: 'Work Project',
-        isDefault: false,
-        isLocal: false,
-      );
 
       expect(
-        TaskListSwitcherHelper.formatLabel(localList),
-        'Personal (Local)',
-      );
-      expect(
-        TaskListSwitcherHelper.formatLabel(googleList),
-        'Work Project (Google)',
+        TaskListSwitcherHelper.formatLabel(list),
+        'Personal Sanctuary',
       );
     });
   });
