@@ -1,8 +1,11 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
 import '../models/task_filter.dart';
+import '../models/task_item.dart';
 import '../theme/app_theme.dart';
 import 'cancel_reason_dialog.dart';
 import 'onboarding_screen.dart';
@@ -41,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final allTasks = controller.allTasksForCurrentList;
     final now = DateTime.now();
 
-    final todayTasks = allTasks.where((t) {
+    final todayTasks = allTasks.where((TaskItem t) {
       if (t.isCompleted || t.isCancelled) return false;
       if (t.plannedTime == null) return false;
       final local = t.plannedTime!.toLocal();
@@ -50,12 +53,12 @@ class _HomeScreenState extends State<HomeScreen> {
           local.day == now.day;
     }).length;
 
-    final plannedTasks = allTasks.where((t) {
+    final plannedTasks = allTasks.where((TaskItem t) {
       return !t.isCompleted && !t.isCancelled && t.plannedTime != null;
     }).length;
 
-    final completedTasks = allTasks.where((t) => t.isCompleted).length;
-    final cancelledTasks = allTasks.where((t) => t.isCancelled).length;
+    final completedTasks = allTasks.where((TaskItem t) => t.isCompleted).length;
+    final cancelledTasks = allTasks.where((TaskItem t) => t.isCancelled).length;
 
     return {
       TaskFilter.all: allTasks.length,
@@ -103,9 +106,9 @@ class _HomeScreenState extends State<HomeScreen> {
             scrolledUnderElevation: 0,
             elevation: 0,
             leadingWidth: 44,
-            leading: Padding(
-              padding: const EdgeInsets.only(left: 16),
-              child: const Center(
+            leading: const Padding(
+              padding: EdgeInsets.only(left: 16),
+              child: Center(
                 child: IsohedronLogo(size: 24),
               ),
             ),
@@ -150,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: controller.isSyncing
                       ? null
                       : () async {
-                          HapticFeedback.lightImpact();
+                          await HapticFeedback.lightImpact();
                           await controller.syncCurrentList();
                         },
                   child: controller.isSyncing
@@ -494,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
           final isSelected = list.id == controller.selectedListId;
           return CupertinoActionSheetAction(
             onPressed: () async {
-              HapticFeedback.lightImpact();
+              await HapticFeedback.lightImpact();
               Navigator.of(ctx).pop();
               if (!isSelected) {
                 await controller.switchList(list.id);
@@ -611,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () async {
                                 final title = titleController.text.trim();
                                 if (title.isNotEmpty) {
-                                  HapticFeedback.lightImpact();
+                                  await HapticFeedback.lightImpact();
                                   await controller.createTask(
                                     title: title,
                                     notes:
@@ -686,7 +689,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Date & Time reminder button
                         GestureDetector(
                           onTap: () async {
-                            HapticFeedback.selectionClick();
+                            await HapticFeedback.selectionClick();
                             final selected = await showPlanTaskDialog(
                               context: context,
                               initialTime: plannedTime,

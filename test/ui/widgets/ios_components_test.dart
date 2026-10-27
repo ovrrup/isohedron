@@ -11,15 +11,13 @@ void main() {
   group('IosSegmentedFilter', () {
     testWidgets('renders all 5 task filters in Cupertino sliding control',
         (tester) async {
-      TaskFilter? selected;
-
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.iosLightTheme,
           home: Scaffold(
             body: IosSegmentedFilter(
               currentFilter: TaskFilter.all,
-              onFilterChanged: (filter) => selected = filter,
+              onFilterChanged: (_) {},
             ),
           ),
         ),
@@ -104,6 +102,7 @@ void main() {
         taskListId: 'local_default',
         title: 'Review proposal',
         plannedTime: DateTime.now().subtract(const Duration(hours: 2)),
+        updatedAt: DateTime.now(),
       );
 
       await tester.pumpWidget(
@@ -130,12 +129,14 @@ void main() {
         taskListId: 'local_default',
         title: 'Task 1',
         plannedTime: DateTime.now().subtract(const Duration(hours: 2)),
+        updatedAt: DateTime.now(),
       );
       final task2 = TaskItem(
         id: 'task_2',
         taskListId: 'local_default',
         title: 'Task 2',
         plannedTime: DateTime.now().subtract(const Duration(hours: 1)),
+        updatedAt: DateTime.now(),
       );
 
       await tester.pumpWidget(
@@ -160,6 +161,7 @@ void main() {
         taskListId: 'local_default',
         title: 'Task 1',
         plannedTime: DateTime.now().subtract(const Duration(hours: 2)),
+        updatedAt: DateTime.now(),
       );
 
       await tester.pumpWidget(

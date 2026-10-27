@@ -58,6 +58,8 @@ class IsohedronAppController extends ChangeNotifier {
     );
   }
 
+  List<TaskItem> get allTasksForCurrentList => List.unmodifiable(_currentTasks);
+
   List<TaskItem> get visibleTasks {
     return storage.filterTasks(
       _currentTasks,

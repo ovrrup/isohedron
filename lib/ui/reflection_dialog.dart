@@ -62,7 +62,7 @@ Future<ReflectionResult?> showReflectionDialog({
           // Reschedule Action
           CupertinoActionSheetAction(
             onPressed: () async {
-              HapticFeedback.lightImpact();
+              await HapticFeedback.lightImpact();
               final selected = await showPlanTaskDialog(
                 context: context,
                 initialTime: task.plannedTime,
@@ -114,7 +114,7 @@ Future<ReflectionResult?> showReflectionDialog({
           CupertinoActionSheetAction(
             isDestructiveAction: true,
             onPressed: () async {
-              HapticFeedback.lightImpact();
+              await HapticFeedback.lightImpact();
               final reason = await showCancelReasonDialog(
                 context: context,
                 task: task,
