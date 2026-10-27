@@ -4,7 +4,6 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../controllers/isohedron_app_controller.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'widgets/isohedron_logo.dart';

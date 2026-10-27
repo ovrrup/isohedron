@@ -229,12 +229,6 @@ class IsohedronAppController extends ChangeNotifier {
     await storage.upsertTask(updated);
     await notifications.cancelReminder(taskId);
 
-    if (isGoogleConnected && !currentList.isLocal) {
-      try {
-        await googleTasks.pushTask(updated);
-      } catch (_) {}
-    }
-
     await loadCurrentTasks();
   }
 
