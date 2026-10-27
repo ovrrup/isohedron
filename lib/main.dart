@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
-import 'services/google_tasks_service.dart';
 import 'services/notification_service.dart';
 import 'services/storage_service.dart';
 import 'theme/app_theme.dart';
@@ -22,12 +21,10 @@ void main() async {
   }
 
   final notifications = NotificationService.local();
-  final googleTasks = GoogleTasksService.live();
 
   final controller = IsohedronAppController(
     storage: storage,
     notifications: notifications,
-    googleTasks: googleTasks,
   );
 
   try {

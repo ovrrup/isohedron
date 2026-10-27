@@ -15,8 +15,6 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  bool _isSigningIn = false;
-  String? _signInFeedback;
 
   IsohedronAppController get controller => widget.controller;
 
@@ -36,103 +34,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         transitionsBuilder: (context, anim1, anim2, child) =>
             FadeTransition(opacity: anim1, child: child),
         transitionDuration: const Duration(milliseconds: 350),
-      ),
-    );
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() {
-      _isSigningIn = true;
-      _signInFeedback = null;
-    });
-
-    try {
-      final success = await controller.signInGoogle();
-      if (success) {
-        await _proceedToHome();
-        return;
-      } else {
-        setState(() {
-          _signInFeedback = controller.googleLastError ??
-              'Google sign-in was cancelled or unavailable. You can continue locally or retry.';
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _signInFeedback = 'Sign-in error: $e';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isSigningIn = false;
-        });
-      }
-    }
-  }
-
-  void _showDirectTokenDialog() {
-    final tokenController = TextEditingController();
-    final emailController = TextEditingController();
-
-    showDialog<void>(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Google OAuth Bearer Token'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'If Google Play Services is unavailable on your device, paste an OAuth Bearer token:',
-              style: TextStyle(fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tokenController,
-              decoration: const InputDecoration(
-                labelText: 'Access Token (ya29...)',
-                hintText: 'ya29.a0...',
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'Account Email (optional)',
-                hintText: 'user@gmail.com',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogCtx).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final token = tokenController.text.trim();
-              if (token.isEmpty) return;
-              Navigator.of(dialogCtx).pop();
-              setState(() => _isSigningIn = true);
-              final ok = await controller.connectGoogleWithToken(
-                token,
-                email: emailController.text.trim(),
-              );
-              if (ok) {
-                await _proceedToHome();
-              } else {
-                setState(() {
-                  _isSigningIn = false;
-                  _signInFeedback =
-                      'Token validation failed: ${controller.googleLastError}';
-                });
-              }
-            },
-            child: const Text('Connect & Continue'),
-          ),
-        ],
       ),
     );
   }
@@ -234,7 +135,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           borderRadius: BorderRadius.circular(14),
                         ),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
                       ),
                       icon: const Icon(Icons.arrow_forward, size: 18),
                       label: const Text(
@@ -285,14 +188,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _buildFeatureRow(
             icon: Icons.filter_center_focus_rounded,
             title: 'Geometric Calm',
-            description: 'No clutter or infinite menus. Only what matters today.',
+            description: 'No clutter, notifications overload, or infinite menus.',
             isDark: isDark,
           ),
           const SizedBox(height: 18),
           _buildFeatureRow(
             icon: Icons.calendar_today_rounded,
             title: 'Calendar-Day Rhythm',
-            description: 'Tasks organize cleanly around actual days without UTC time zone drift.',
+            description: 'Tasks organize cleanly around actual days without external time drift.',
             isDark: isDark,
           ),
         ],
@@ -339,7 +242,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Days don\'t always unfold as planned. Isohedron treats unmet tasks with mindful compassion rather than shame.',
+            'Days don\'t always unfold as planned. Isohedron treats unmet tasks with mindful compassion rather than guilt.',
             style: theme.textTheme.bodyLarge?.copyWith(
               color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
               height: 1.45,
@@ -365,17 +268,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // --- Slide 3: Choice of Sync & Privacy ---
+  // --- Slide 3: Sovereign Sanctuary ---
   Widget _buildSlide3(ThemeData theme, bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
+          Center(
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppTheme.primary.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: const Center(
+                child: Icon(
+                  Icons.shield_outlined,
+                  size: 54,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
           Text(
-            'Choose How You Work',
+            'Private by Design',
             style: theme.textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
@@ -383,240 +308,52 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 14),
           Text(
-            'Connect with Google to sync seamlessly across your devices, or stay completely private and offline.',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            'Your thoughts, intentions, and reflections remain 100% on this device. No cloud surveillance, accounts, or telemetry.',
+            style: theme.textTheme.bodyLarge?.copyWith(
               color: isDark ? AppTheme.darkTextSecondary : AppTheme.lightTextSecondary,
-              height: 1.4,
+              height: 1.45,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 24),
-
-          if (_signInFeedback != null)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.accent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: AppTheme.accent, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _signInFeedback!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppTheme.darkAccent : AppTheme.accent,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Option 1: Sign in with Google (Primary Option)
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkSurface : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.5),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                        Icons.cloud_sync_rounded,
-                        color: AppTheme.primary,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Google Tasks Sync',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? AppTheme.darkTextPrimary
-                                  : AppTheme.lightTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Keep tasks in sync with Google Workspace',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : AppTheme.lightTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                ElevatedButton.icon(
-                  onPressed: _isSigningIn ? null : _handleGoogleSignIn,
-                  icon: _isSigningIn
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.login, size: 20),
-                  label: Text(_isSigningIn
-                      ? 'Connecting to Google...'
-                      : 'Sign in with Google'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.center,
-                  child: TextButton(
-                    onPressed: _showDirectTokenDialog,
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      foregroundColor: AppTheme.primary,
-                    ),
-                    child: const Text(
-                      'Direct OAuth Token Entry',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 36),
+          _buildFeatureRow(
+            icon: Icons.offline_bolt_outlined,
+            title: '100% Offline & Sovereign',
+            description: 'Never requires internet connectivity or external credentials.',
+            isDark: isDark,
           ),
-
           const SizedBox(height: 18),
+          _buildFeatureRow(
+            icon: Icons.lock_outline_rounded,
+            title: 'Atomic Durability',
+            description: 'Crash-resilient local persistence keeps your data safe.',
+            isDark: isDark,
+          ),
+          const SizedBox(height: 36),
 
-          // Option 2: Continue Locally (Offline & Sovereign)
-          Container(
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkSurface : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppTheme.darkOutline : const Color(0xFFE4DEC8),
-                width: 1,
+          ElevatedButton(
+            onPressed: _proceedToHome,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Enter Isohedron',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
               ),
             ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: (isDark
-                                ? AppTheme.darkSurfaceContainer
-                                : AppTheme.lightSurfaceContainer)
-                            .withValues(alpha: 0.8),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        Icons.shield_outlined,
-                        color: isDark
-                            ? AppTheme.darkTextPrimary
-                            : AppTheme.lightTextPrimary,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Local & Private',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              color: isDark
-                                  ? AppTheme.darkTextPrimary
-                                  : AppTheme.lightTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '100% offline, stored securely on this device',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? AppTheme.darkTextSecondary
-                                  : AppTheme.lightTextSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                OutlinedButton(
-                  onPressed: _proceedToHome,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDark
-                        ? AppTheme.darkTextPrimary
-                        : AppTheme.lightTextPrimary,
-                    side: BorderSide(
-                      color: isDark
-                          ? AppTheme.darkOutline
-                          : const Color(0xFFC7BFAF),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Text('Continue Locally'),
-                ),
-              ],
-            ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
         ],
       ),
     );

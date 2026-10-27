@@ -1,7 +1,5 @@
 import 'package:test/test.dart';
 import 'package:isohedron/models/task_filter.dart';
-import 'package:isohedron/models/task_list.dart';
-import 'package:isohedron/services/google_tasks_service.dart';
 import 'package:isohedron/services/notification_service.dart';
 import 'package:isohedron/services/storage_service.dart';
 import 'package:isohedron/ui/home_screen.dart';
@@ -10,7 +8,6 @@ void main() {
   group('IsohedronAppController Smoke Test', () {
     late StorageService storage;
     late NotificationService notificationService;
-    late GoogleTasksService googleTasksService;
     late IsohedronAppController appController;
     late MockNotificationAdapter mockNotifications;
 
@@ -18,22 +15,10 @@ void main() {
       storage = StorageService.inMemory();
       mockNotifications = MockNotificationAdapter();
       notificationService = NotificationService(adapter: mockNotifications);
-      googleTasksService = GoogleTasksService.mock(
-        mockEmail: 'alex@example.com',
-        initialLists: [
-          const TaskList(
-            id: 'g-default',
-            title: 'Google Tasks',
-            isDefault: true,
-            isLocal: false,
-          ),
-        ],
-      );
 
       appController = IsohedronAppController(
         storage: storage,
         notifications: notificationService,
-        googleTasks: googleTasksService,
       );
 
       await appController.init();
@@ -119,12 +104,6 @@ void main() {
       expect(completed.isCompleted, isTrue);
       expect(completed.isCancelled, isFalse);
       expect(completed.cancelReason, isNull);
-    });
-
-    test('syncCurrentList does not throw on network error', () async {
-      await appController.signInGoogle();
-      // Even if network throws, controller handles it gracefully
-      await expectLater(appController.syncCurrentList(), completes);
     });
 
     test('onboarding state defaults to false and switches to completed', () async {

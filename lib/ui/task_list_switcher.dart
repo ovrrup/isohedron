@@ -3,8 +3,7 @@ import '../models/task_list.dart';
 
 class TaskListSwitcherHelper {
   static String formatLabel(TaskList list) {
-    final type = list.isLocal ? 'Local' : 'Google';
-    return '${list.title} ($type)';
+    return list.title;
   }
 }
 
@@ -43,13 +42,15 @@ class TaskListSwitcherDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return DropdownButtonHideUnderline(
       child: DropdownButton<String>(
         value: availableLists.any((l) => l.id == selectedListId)
             ? selectedListId
             : (availableLists.isNotEmpty ? availableLists.first.id : null),
-        icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-        dropdownColor: Theme.of(context).colorScheme.surface,
+        icon: Icon(Icons.arrow_drop_down, color: theme.colorScheme.onSurface),
+        dropdownColor: theme.colorScheme.surface,
         onChanged: (id) {
           if (id != null) onListSelected(id);
         },
@@ -60,18 +61,16 @@ class TaskListSwitcherDropdown extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  list.isLocal ? Icons.smartphone : Icons.cloud_outlined,
+                  Icons.folder_outlined,
                   size: 16,
-                  color: list.isLocal
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.secondary,
+                  color: theme.colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
                   list.title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),

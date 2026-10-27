@@ -1,29 +1,40 @@
-# Isohedron Tasks
+# Isohedron
 
-Autonomous, zero-friction Universal AI Context Bridge and Minimal Task Manager for iOS & Android.
+A sovereign, 100% private offline geometric task sanctuary with an accountability reflection loop for Android.
 
-Isohedron Tasks is a local-first task manager built with high precision scheduling, an accountability reflection loop, and optional Google Tasks integration.
+Isohedron is designed around the philosophy of mindful focus and geometric calm. It operates completely offline with atomic local persistence, calendar-day rhythm, and a compassionate reflection loop when plans change.
+
+---
+
+## Brand Identity & Aesthetic
+
+- **Primary Brand**: `#1A6FBF` (Cerulean Blue)
+- **Background Canvas & Surfaces**: `#F5F0E8` (Warm Linen / Parchment)
+- **Accent & Alerts**: `#D91A2A` (Crimson)
+- **Geometric Icon**: Custom faceted icosahedron emblem with shaded polygons and central crimson jewel.
 
 ---
 
 ## Key Features
 
-1. **Standalone & Local-First:**
-   * Works completely offline out of the box with zero external login requirements.
-   * Full local task persistence and list switching.
+1. **100% Sovereign & Offline:**
+   * Operates completely offline with zero accounts, cloud tracking, or network requests.
+   * Atomic local JSON persistence (`.tmp` -> `.bak` -> primary) guarantees durability across sudden app terminations.
+   * Full local task lists and custom multi-list switching.
 
 2. **Planning & Scheduled Alarms:**
-   * Plan tasks for specific dates and times.
-   * Cross-platform local notifications deliver timely alerts without draining battery.
+   * Plan tasks for specific calendar days and times.
+   * Local device alarms and notifications deliver timely reminders without draining battery or requiring cloud push services.
 
-3. **Reflection Loop:**
-   * If a task is cancelled or marked not done, the app immediately prompts for the reason (preset chips + custom text).
-   * Reflection reasons are stored in history and attached to task notes to surface patterns over time.
+3. **Compassionate Reflection Loop:**
+   * When a planned task is missed or cancelled, Isohedron treats it with mindfulness rather than guilt or red panic numbers.
+   * Overdue banners gently prompt reflection to reschedule, complete, or record why plans shifted.
+   * Reflection reasons are preserved in task logs to surface patterns over time.
 
-4. **Optional Google Tasks Integration:**
-   * Use Google Tasks as a sync bridge across multiple devices.
-   * Seamless two-way sync: completions and cancellation reasons sync back to Google Tasks notes (`[Cancelled: <reason>]`) so external clients stay in sync.
-   * Multi-list switcher: switch between Local and Google Task lists.
+4. **First-Launch Onboarding:**
+   * Guided multi-slide introduction to the geometric sanctuary and reflection philosophy.
+   * Instant offline start with zero configuration.
+   * Replayable at any time from the app's About menu.
 
 ---
 
@@ -33,25 +44,36 @@ Isohedron Tasks is a local-first task manager built with high precision scheduli
 .
 ├── .github/
 │   └── workflows/
-│       └── build.yml               # Automated Android & iOS GitHub Actions CI
+│       ├── build.yml                 # Automated Android CI & quality gates
+│       └── nightly.yml               # Automated signed APK rolling release
 ├── lib/
-│   ├── main.dart                   # Application entrypoint
+│   ├── main.dart                     # App entrypoint and reactive theme routing
+│   ├── controllers/
+│   │   └── isohedron_app_controller.dart # Central reactive state controller
 │   ├── models/
-│   │   ├── task_filter.dart        # Filter states (All, Today, Planned, Completed, Cancelled)
-│   │   ├── task_item.dart          # Task model with reflection metadata parser/serializer
-│   │   └── task_list.dart          # Local & Google task list abstractions
+│   │   ├── task_filter.dart          # Filter definitions (All, Today, Planned, Completed, Cancelled)
+│   │   ├── task_item.dart            # Local task model with atomic serialization
+│   │   └── task_list.dart            # Sovereign task list abstraction
 │   ├── services/
-│   │   ├── google_tasks_service.dart # Google Tasks REST API client & mock sync bridge
 │   │   ├── notification_service.dart # Local scheduled alarms & ID generator
-│   │   └── storage_service.dart    # Local JSON persistence & filtering engine
+│   │   └── storage_service.dart      # Atomic file persistence & filtering engine
+│   ├── theme/
+│   │   └── app_theme.dart            # Brand palette (#1A6FBF, #F5F0E8, #D91A2A) & M3 themes
 │   └── ui/
 │       ├── cancel_reason_dialog.dart # Reflection prompt dialog
-│       ├── home_screen.dart        # App coordinator & main responsive view
-│       ├── plan_task_dialog.dart   # Date/time scheduling picker & shortcut chips
-│       └── task_list_switcher.dart # List switcher widget
+│       ├── home_screen.dart          # Main task list, overdue banner, and About dialog
+│       ├── onboarding_screen.dart    # First-launch 3-slide introductory carousel
+│       ├── plan_task_dialog.dart     # Date/time scheduling picker & quick chips
+│       ├── reflection_dialog.dart    # Overdue task reflection decision dialog
+│       ├── task_list_switcher.dart   # Dropdown list switcher
+│       └── widgets/
+│           └── isohedron_logo.dart   # Custom-painted faceted icosahedron emblem
+├── scripts/
+│   └── generate_icons.js             # High-precision vector & raster icon generator
 └── test/
+    ├── controllers/isohedron_app_controller_test.dart
     ├── models/task_item_test.dart
-    ├── services/google_tasks_service_test.dart
+    ├── scripts/workflow_syntax_test.sh
     ├── services/notification_service_test.dart
     ├── services/storage_service_test.dart
     ├── ui/app_smoke_test.dart
@@ -60,26 +82,13 @@ Isohedron Tasks is a local-first task manager built with high precision scheduli
 
 ---
 
-## Development & Testing
+## Development & Automated Releases
 
-### Running Tests Locally
+### Running Quality Gates
 ```bash
-dart pub get
-dart test
-dart analyze
+bash test/scripts/workflow_syntax_test.sh
 ```
 
-### Automated CI / CD & Nightly Releases
-
-1. **Pull Requests & Push Checks (`.github/workflows/build.yml`):**
-   * **Lint & Tests:** Runs analysis and unit tests on `ubuntu-latest`.
-   * **Android Build:** Compiles the Android APK and uploads release artifacts.
-   * **iOS Build:** Verifies macOS / iOS compilation without codesigning.
-
-2. **Nightly Release Channel (`.github/workflows/nightly.yml`):**
-   * Runs daily at **02:00 UTC** and via manual dispatch.
-   * **Commit-Aware:** Automatically skips if no new commits landed on `main`.
-   * **Zero Clutter:** Automatically purges the previous nightly release and tag before publishing, maintaining a single rolling release.
-   * **Cryptographic APK Signing:** Signed with an official Android Release Keystore (`apksigner`) using GitHub Repository Secrets.
-   * **Download Latest Nightly:** [Isohedron Nightly Build](https://github.com/ovrrup/isohedron/releases/tag/nightly)
-   * See [docs/SIGNING.md](docs/SIGNING.md) for signing credentials and key generation guide.
+### Nightly Releases
+- Automated signed nightly APK builds are published on every push to `main` and daily at 02:00 UTC.
+- Download the latest signed build: [Isohedron Nightly Release](https://github.com/ovrrup/isohedron/releases/tag/nightly)

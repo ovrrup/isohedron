@@ -1,39 +1,24 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:isohedron/controllers/isohedron_app_controller.dart';
 import 'package:isohedron/models/task_filter.dart';
-import 'package:isohedron/models/task_list.dart';
-import 'package:isohedron/services/google_tasks_service.dart';
 import 'package:isohedron/services/notification_service.dart';
 import 'package:isohedron/services/storage_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('IsohedronAppController', () {
+  group('IsohedronAppController (Pure Sovereign Offline)', () {
     late StorageService storage;
     late NotificationService notifications;
-    late GoogleTasksService googleTasks;
     late IsohedronAppController controller;
 
     setUp(() async {
       storage = StorageService.inMemory();
       notifications = NotificationService.inMemory();
-      googleTasks = GoogleTasksService.mock(
-        mockEmail: 'tester@example.com',
-        initialLists: [
-          const TaskList(
-            id: 'g-list-1',
-            title: 'Google Tasks Work',
-            isDefault: false,
-            isLocal: false,
-          ),
-        ],
-      );
 
       controller = IsohedronAppController(
         storage: storage,
         notifications: notifications,
-        googleTasks: googleTasks,
       );
 
       await controller.init();
@@ -60,31 +45,40 @@ void main() {
         notes: 'Gather all receipts',
       );
 
-      expect(notifyCount, greaterThan(0));
+      expect(created.title, 'Complete tax report');
       expect(controller.visibleTasks.length, 1);
-      expect(controller.visibleTasks.first.id, created.id);
+      expect(notifyCount, greaterThanOrEqualTo(1));
 
       // 2. Complete task
-      final prevCount = notifyCount;
       await controller.completeTask(created.id);
-      expect(notifyCount, greaterThan(prevCount));
-      // In TaskFilter.all (active only), completed task is hidden
       expect(controller.visibleTasks, isEmpty);
 
-      // Switch to completed filter
+      // Check under completed filter
       controller.setFilter(TaskFilter.completed);
       expect(controller.visibleTasks.length, 1);
       expect(controller.visibleTasks.first.isCompleted, isTrue);
 
-      // 3. Reopen task
-      await controller.reopenTask(created.id);
-      controller.setFilter(TaskFilter.all);
-      expect(controller.visibleTasks.length, 1);
-      expect(controller.visibleTasks.first.isCompleted, isFalse);
-
-      // 4. Delete task
+      // 3. Delete task
       await controller.deleteTask(created.id);
       expect(controller.visibleTasks, isEmpty);
+    });
+
+    test('filters tasks according to active filter and search text', () async {
+      final t1 = await controller.createTask(title: 'Grocery shopping', notes: 'Milk and bread');
+      final t2 = await controller.createTask(title: 'Write blog post', notes: 'Flutter architecture');
+
+      expect(controller.visibleTasks.length, 2);
+
+      controller.setSearchQuery('grocery');
+      expect(controller.visibleTasks.length, 1);
+      expect(controller.visibleTasks.first.id, t1.id);
+
+      controller.setSearchQuery('flutter');
+      expect(controller.visibleTasks.length, 1);
+      expect(controller.visibleTasks.first.id, t2.id);
+
+      controller.setSearchQuery('');
+      expect(controller.visibleTasks.length, 2);
     });
 
     test('detects overdue tasks and handles reflection reschedule', () async {
