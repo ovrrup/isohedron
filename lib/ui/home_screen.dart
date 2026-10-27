@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/task_filter.dart';
 import '../models/task_item.dart';
 import '../models/task_list.dart';
@@ -56,6 +57,23 @@ class IsohedronAppController {
   Future<void> init() async {
     await storage.init();
     await notifications.init();
+
+    // 1. Attempt silent restore from Google Play Services
+    try {
+      await googleTasks.signInSilently();
+    } catch (_) {}
+
+    // 2. If not authenticated, attempt restore from persisted OAuth access token
+    if (!googleTasks.isAuthenticated) {
+      final savedToken = await storage.getGoogleAccessToken();
+      final savedEmail = await storage.getGoogleUserEmail();
+      if (savedToken != null && savedToken.trim().isNotEmpty) {
+        try {
+          await googleTasks.connectWithToken(savedToken, email: savedEmail);
+        } catch (_) {}
+      }
+    }
+
     await loadTaskLists();
     await loadCurrentTasks();
   }
@@ -113,8 +131,23 @@ class IsohedronAppController {
     return false;
   }
 
+  Future<bool> connectGoogleWithToken(String token, {String? email}) async {
+    final success = await googleTasks.connectWithToken(token, email: email);
+    if (success) {
+      await storage.saveGoogleAuth(
+        token: token.trim(),
+        email: email?.trim().isNotEmpty == true ? email!.trim() : googleTasks.userEmail,
+      );
+      await loadTaskLists();
+      await loadCurrentTasks();
+      return true;
+    }
+    return false;
+  }
+
   Future<void> signOutGoogle() async {
     await googleTasks.signOut();
+    await storage.clearGoogleAuth();
     await loadTaskLists();
     if (!currentList.isLocal) {
       await switchList('local_default');
@@ -564,79 +597,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showAccountDialog(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          title: const Text('Google Tasks Account'),
-          content: controller.isGoogleConnected
-              ? Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Status: Connected', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                    const SizedBox(height: 8),
-                    Text('Signed in as:\n${controller.googleEmail}'),
-                  ],
-                )
-              : const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Connect Google Tasks to sync tasks and lists across devices.\n\nIsohedron functions 100% locally with offline storage when not connected.',
-                    ),
-                    SizedBox(height: 12),
-                    Text(
-                      'Android OAuth Credentials:\nPackage: com.ovrrup.isohedron\nSHA-1: 94:55:00:41:DC:C6:94:AB:0C:21:5D:93:2D:C6:6B:03:73:0A:2B:5B',
-                      style: TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                    ),
-                  ],
-                ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Close'),
-            ),
-            if (controller.isGoogleConnected)
-              FilledButton(
-                onPressed: () async {
-                  await controller.signOutGoogle();
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Signed out of Google Tasks')),
-                    );
-                  }
-                  setState(() {});
-                },
-                child: const Text('Sign Out'),
-              )
-            else
-              FilledButton(
-                onPressed: () async {
-                  final success = await controller.signInGoogle();
-                  if (ctx.mounted) Navigator.of(ctx).pop();
-                  if (context.mounted) {
-                    if (success) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Connected to Google Tasks as ${controller.googleEmail}')),
-                      );
-                    } else {
-                      final err = controller.googleLastError ?? 'Sign in unsuccessful';
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Google Sign-In: $err'),
-                          duration: const Duration(seconds: 8),
-                        ),
-                      );
-                    }
-                  }
-                  setState(() {});
-                },
-                child: const Text('Sign In with Google'),
-              ),
-          ],
-        );
-      },
+      builder: (ctx) => _GoogleAccountDialog(
+        controller: controller,
+        onStateChanged: () => setState(() {}),
+      ),
     );
   }
 
@@ -726,6 +690,477 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         );
       },
+    );
+  }
+}
+
+class _GoogleAccountDialog extends StatefulWidget {
+  final IsohedronAppController controller;
+  final VoidCallback onStateChanged;
+
+  const _GoogleAccountDialog({
+    required this.controller,
+    required this.onStateChanged,
+  });
+
+  @override
+  State<_GoogleAccountDialog> createState() => _GoogleAccountDialogState();
+}
+
+class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final _tokenController = TextEditingController();
+  final _emailController = TextEditingController();
+  bool _isLoading = false;
+  String? _statusError;
+  bool _showTokenGuide = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _tokenController.dispose();
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isConnected = widget.controller.isGoogleConnected;
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            isConnected ? Icons.cloud_done : Icons.cloud_sync_outlined,
+            color: isConnected ? Colors.green : theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          const Text('Google Tasks Account'),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SingleChildScrollView(
+          child: isConnected
+              ? _buildConnectedView(theme)
+              : _buildConnectOptions(theme),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Close'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectedView(ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.green),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Status: Active & Connected',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    Text(
+                      widget.controller.googleEmail ?? 'Google Account',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'Tasks and lists sync automatically. You can also trigger an immediate sync below.',
+          style: TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.sync),
+                label: const Text('Sync Now'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() => _isLoading = true);
+                        try {
+                          await widget.controller.syncCurrentList();
+                          widget.onStateChanged();
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Tasks synced successfully.'),
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      },
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.tonalIcon(
+                icon: const Icon(Icons.logout),
+                label: const Text('Disconnect'),
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        setState(() => _isLoading = true);
+                        await widget.controller.signOutGoogle();
+                        widget.onStateChanged();
+                        if (mounted) {
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Disconnected from Google Tasks.'),
+                            ),
+                          );
+                        }
+                      },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConnectOptions(ThemeData theme) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Connect Google Tasks to sync your task lists across devices.',
+          style: TextStyle(fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        TabBar(
+          controller: _tabController,
+          labelColor: theme.colorScheme.primary,
+          unselectedLabelColor: theme.colorScheme.outline,
+          indicatorSize: TabBarIndicatorSize.tab,
+          tabs: const [
+            Tab(text: 'Direct Token', icon: Icon(Icons.key, size: 18)),
+            Tab(text: 'Google Play', icon: Icon(Icons.android, size: 18)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 320,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildTokenTab(theme),
+              _buildPlayServicesTab(theme),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTokenTab(ThemeData theme) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Instant Direct Sync',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Connect instantly with an OAuth access token. Guarantees live sync on all devices without Google Cloud keystore setup.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _tokenController,
+            decoration: const InputDecoration(
+              labelText: 'OAuth Access Token (ya29...)',
+              hintText: 'Paste OAuth Bearer Token',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email or Label (optional)',
+              hintText: 'user@gmail.com',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+          if (_statusError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _statusError!,
+              style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  icon: _isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.link),
+                  label: const Text('Connect & Sync'),
+                  onPressed: _isLoading
+                      ? null
+                      : () async {
+                          final token = _tokenController.text.trim();
+                          if (token.isEmpty) {
+                            setState(
+                              () => _statusError =
+                                  'Please paste an OAuth access token.',
+                            );
+                            return;
+                          }
+                          setState(() {
+                            _isLoading = true;
+                            _statusError = null;
+                          });
+                          final email = _emailController.text.trim();
+                          final success =
+                              await widget.controller.connectGoogleWithToken(
+                            token,
+                            email: email.isNotEmpty ? email : null,
+                          );
+                          if (mounted) {
+                            if (success) {
+                              widget.onStateChanged();
+                              Navigator.of(context).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Connected to Google Tasks as ${widget.controller.googleEmail}',
+                                  ),
+                                ),
+                              );
+                            } else {
+                              setState(() {
+                                _isLoading = false;
+                                _statusError =
+                                    widget.controller.googleLastError ??
+                                        'Failed to connect with token. Ensure Tasks API is enabled.';
+                              });
+                            }
+                          }
+                        },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            icon: Icon(
+              _showTokenGuide ? Icons.expand_less : Icons.help_outline,
+              size: 16,
+            ),
+            label: Text(
+              _showTokenGuide ? 'Hide Token Guide' : 'How to get a token (30s)',
+            ),
+            onPressed: () => setState(() => _showTokenGuide = !_showTokenGuide),
+          ),
+          if (_showTokenGuide)
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withValues(
+                  alpha: 0.5,
+                ),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                '1. Open developers.google.com/oauthplayground\n'
+                '2. Under "Tasks API v1", select "https://www.googleapis.com/auth/tasks"\n'
+                '3. Click "Authorize APIs" and sign in\n'
+                '4. Click "Exchange authorization code for tokens"\n'
+                '5. Copy the generated "Access token" and paste it here.',
+                style: TextStyle(fontSize: 11, height: 1.4),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayServicesTab(ThemeData theme) {
+    final lastErr = widget.controller.googleLastError;
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Native Google Play Sign-In',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            '1-Tap account picker via Google Play Services on Android.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.account_circle),
+              label: const Text('Sign In with Google'),
+              onPressed: _isLoading
+                  ? null
+                  : () async {
+                      setState(() => _isLoading = true);
+                      final success = await widget.controller.signInGoogle();
+                      if (mounted) {
+                        setState(() => _isLoading = false);
+                        if (success) {
+                          widget.onStateChanged();
+                          Navigator.of(context).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Connected to Google Tasks as ${widget.controller.googleEmail}',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+            ),
+          ),
+          if (lastErr != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Play Services Error: $lastErr',
+                    style: TextStyle(
+                      color: theme.colorScheme.error,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (lastErr.contains('10')) ...[
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Note: ApiException 10 means Google Play Services cannot verify the APK because the SHA-1 is not registered in Google Cloud Console. Use Direct Token tab or register the credentials below in GCP.',
+                      style: TextStyle(fontSize: 11),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          const Text(
+            'Release Signing Fingerprints:',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+          ),
+          const SizedBox(height: 6),
+          _buildCopyRow('Package', 'com.ovrrup.isohedron'),
+          _buildCopyRow(
+            'SHA-1',
+            '94:55:00:41:DC:C6:94:AB:0C:21:5D:93:2D:C6:6B:03:73:0A:2B:5B',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCopyRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              '$label: $value',
+              style: const TextStyle(fontSize: 10, fontFamily: 'monospace'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy, size: 14),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            tooltip: 'Copy $label',
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: value));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Copied $label to clipboard'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 }

@@ -10,6 +10,8 @@ abstract class GoogleTasksClient {
   String? get userEmail;
   String? get lastError;
   Future<bool> signIn();
+  Future<bool> signInSilently();
+  Future<bool> connectWithToken(String accessToken, {String? email});
   Future<void> signOut();
   Future<List<TaskList>> fetchTaskLists();
   Future<List<TaskItem>> fetchTasks(String taskListId);
@@ -56,6 +58,17 @@ class MockGoogleTasksClient implements GoogleTasksClient {
 
   @override
   Future<bool> signIn() async {
+    _signedIn = true;
+    return true;
+  }
+
+  @override
+  Future<bool> signInSilently() async {
+    return _signedIn;
+  }
+
+  @override
+  Future<bool> connectWithToken(String accessToken, {String? email}) async {
     _signedIn = true;
     return true;
   }
@@ -148,6 +161,49 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
       return true;
     } catch (e) {
       _lastError = e.toString();
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> signInSilently() async {
+    _lastError = null;
+    try {
+      final account = await _googleSignIn.signInSilently();
+      if (account == null) return false;
+      final auth = await account.authHeaders;
+      final authClient = GoogleAuthClient(auth);
+      _tasksApi = gtasks.TasksApi(authClient);
+      _userEmail = account.email;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> connectWithToken(String accessToken, {String? email}) async {
+    _lastError = null;
+    final token = accessToken.trim();
+    if (token.isEmpty) {
+      _lastError = 'Access token cannot be empty.';
+      return false;
+    }
+
+    try {
+      final authClient = GoogleAuthClient({'Authorization': 'Bearer $token'});
+      final api = gtasks.TasksApi(authClient);
+
+      // Verify token validity by requesting tasklists
+      await api.tasklists.list(maxResults: 1);
+
+      _tasksApi = api;
+      _userEmail = (email != null && email.trim().isNotEmpty)
+          ? email.trim()
+          : 'Google Tasks (OAuth Token)';
+      return true;
+    } catch (e) {
+      _lastError = 'Failed to connect token: $e';
       return false;
     }
   }
@@ -278,6 +334,9 @@ class GoogleTasksService {
   String? get lastError => _client.lastError;
 
   Future<bool> signIn() => _client.signIn();
+  Future<bool> signInSilently() => _client.signInSilently();
+  Future<bool> connectWithToken(String accessToken, {String? email}) =>
+      _client.connectWithToken(accessToken, email: email);
   Future<void> signOut() => _client.signOut();
 
   Future<List<TaskList>> fetchTaskLists() => _client.fetchTaskLists();
