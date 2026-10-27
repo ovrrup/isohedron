@@ -8,6 +8,7 @@ import 'onboarding_screen.dart';
 import 'plan_task_dialog.dart';
 import 'reflection_dialog.dart';
 import 'task_list_switcher.dart';
+import 'widgets/ios_task_cell.dart';
 import 'widgets/isohedron_logo.dart';
 
 export '../controllers/isohedron_app_controller.dart';
@@ -73,7 +74,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 },
               ),
-              if (controller.isGoogleConnected && !controller.currentList.isLocal)
+              if (controller.isGoogleConnected &&
+                  !controller.currentList.isLocal)
                 IconButton(
                   icon: controller.isSyncing
                       ? const SizedBox(
@@ -282,7 +284,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               'Sanctuary is Clear',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                                color: theme.colorScheme.onSurface
+                                    .withValues(alpha: 0.8),
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -299,270 +302,67 @@ class _HomeScreenState extends State<HomeScreen> {
                         itemCount: visibleTasks.length,
                         itemBuilder: (context, index) {
                           final task = visibleTasks[index];
-                          final isOverdue = !task.isCompleted &&
-                              !task.isCancelled &&
-                              task.plannedTime != null &&
-                              task.plannedTime!.isBefore(DateTime.now());
-
-                          return Dismissible(
-                            key: ValueKey(task.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              color: theme.colorScheme.errorContainer,
-                              alignment: Alignment.centerRight,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
-                              child: Icon(
-                                Icons.cancel_outlined,
-                                color: theme.colorScheme.onErrorContainer,
-                              ),
-                            ),
-                            confirmDismiss: (direction) async {
+                          return IosTaskCell(
+                            task: task,
+                            showDivider: index < visibleTasks.length - 1,
+                            onToggleComplete: (t) async {
+                              if (t.isCompleted) {
+                                await controller.reopenTask(t.id);
+                              } else {
+                                await controller.completeTask(t.id);
+                              }
+                            },
+                            onReflect: (t) async {
+                              final res = await showReflectionDialog(
+                                context: context,
+                                task: t,
+                              );
+                              if (res != null) {
+                                if (res.action == ReflectionAction.complete) {
+                                  await controller.completeTask(t.id);
+                                } else if (res.action ==
+                                    ReflectionAction.cancel) {
+                                  await controller.cancelTask(
+                                    t.id,
+                                    reason: res.cancelReason ?? 'Skipped',
+                                  );
+                                } else if (res.action ==
+                                        ReflectionAction.reschedule &&
+                                    res.newPlannedTime != null) {
+                                  await controller.rescheduleTask(
+                                    t.id,
+                                    res.newPlannedTime!,
+                                  );
+                                }
+                              }
+                            },
+                            onReschedule: (t) async {
+                              final planned = await showPlanTaskDialog(
+                                context: context,
+                                initialTime: t.plannedTime,
+                              );
+                              if (planned != null) {
+                                await controller.rescheduleTask(
+                                  t.id,
+                                  planned,
+                                );
+                              }
+                            },
+                            onCancel: (t) async {
                               final reason = await showCancelReasonDialog(
                                 context: context,
-                                task: task,
+                                task: t,
                               );
                               if (reason != null) {
                                 await controller.cancelTask(
-                                  task.id,
+                                  t.id,
                                   reason: reason,
                                 );
-                                return false;
                               }
-                              return false;
                             },
-                            child: Card(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              elevation: 0.5,
-                              child: ListTile(
-                                leading: Checkbox(
-                                  value: task.isCompleted,
-                                  onChanged: (checked) async {
-                                    if (checked == true) {
-                                      await controller.completeTask(task.id);
-                                    } else {
-                                      await controller.reopenTask(task.id);
-                                    }
-                                  },
-                                ),
-                                title: Text(
-                                  task.title,
-                                  style: TextStyle(
-                                    decoration: task.isCompleted
-                                        ? TextDecoration.lineThrough
-                                        : null,
-                                    color: task.isCompleted
-                                        ? theme.colorScheme.outline
-                                        : theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    if (task.notes != null &&
-                                        task.notes!.isNotEmpty)
-                                      Text(
-                                        task.notes!,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    const SizedBox(height: 4),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 4,
-                                      children: [
-                                        if (task.plannedTime != null)
-                                          ActionChip(
-                                            avatar: Icon(
-                                              isOverdue
-                                                  ? Icons.warning_amber
-                                                  : Icons.alarm,
-                                              size: 14,
-                                              color: isOverdue
-                                                  ? theme.colorScheme.error
-                                                  : null,
-                                            ),
-                                            label: Text(
-                                              isOverdue
-                                                  ? 'Missed: ${task.plannedTime!.toLocal().month}/${task.plannedTime!.toLocal().day} ${task.plannedTime!.toLocal().hour}:${task.plannedTime!.toLocal().minute.toString().padLeft(2, '0')}'
-                                                  : 'Planned: ${task.plannedTime!.toLocal().month}/${task.plannedTime!.toLocal().day} ${task.plannedTime!.toLocal().hour}:${task.plannedTime!.toLocal().minute.toString().padLeft(2, '0')}',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: isOverdue
-                                                    ? theme.colorScheme.error
-                                                    : null,
-                                              ),
-                                            ),
-                                            backgroundColor: isOverdue
-                                                ? theme
-                                                    .colorScheme.errorContainer
-                                                    .withValues(alpha: 0.3)
-                                                : null,
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                            padding: EdgeInsets.zero,
-                                            onPressed: () async {
-                                              final res =
-                                                  await showReflectionDialog(
-                                                context: context,
-                                                task: task,
-                                              );
-                                              if (res != null) {
-                                                if (res.action ==
-                                                    ReflectionAction.complete) {
-                                                  await controller
-                                                      .completeTask(task.id);
-                                                } else if (res.action ==
-                                                    ReflectionAction.cancel) {
-                                                  await controller.cancelTask(
-                                                    task.id,
-                                                    reason: res.cancelReason ??
-                                                        'Skipped',
-                                                  );
-                                                } else if (res.action ==
-                                                        ReflectionAction
-                                                            .reschedule &&
-                                                    res.newPlannedTime !=
-                                                        null) {
-                                                  await controller
-                                                      .rescheduleTask(
-                                                    task.id,
-                                                    res.newPlannedTime!,
-                                                  );
-                                                }
-                                              }
-                                            },
-                                          ),
-                                        if (task.isCancelled &&
-                                            task.cancelReason != null)
-                                          Chip(
-                                            avatar: Icon(
-                                              Icons.info_outline,
-                                              size: 14,
-                                              color: theme.colorScheme.error,
-                                            ),
-                                            label: Text(
-                                              task.cancelReason!,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                color: theme.colorScheme.error,
-                                              ),
-                                            ),
-                                            backgroundColor: theme
-                                                .colorScheme.errorContainer
-                                                .withValues(alpha: 0.5),
-                                            visualDensity:
-                                                VisualDensity.compact,
-                                            padding: EdgeInsets.zero,
-                                          ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                trailing: PopupMenuButton<String>(
-                                  onSelected: (val) async {
-                                    if (val == 'reflect') {
-                                      final res = await showReflectionDialog(
-                                        context: context,
-                                        task: task,
-                                      );
-                                      if (res != null) {
-                                        if (res.action ==
-                                            ReflectionAction.complete) {
-                                          await controller
-                                              .completeTask(task.id);
-                                        } else if (res.action ==
-                                            ReflectionAction.cancel) {
-                                          await controller.cancelTask(
-                                            task.id,
-                                            reason:
-                                                res.cancelReason ?? 'Skipped',
-                                          );
-                                        } else if (res.action ==
-                                                ReflectionAction.reschedule &&
-                                            res.newPlannedTime != null) {
-                                          await controller.rescheduleTask(
-                                            task.id,
-                                            res.newPlannedTime!,
-                                          );
-                                        }
-                                      }
-                                    } else if (val == 'plan') {
-                                      final planned = await showPlanTaskDialog(
-                                        context: context,
-                                        initialTime: task.plannedTime,
-                                      );
-                                      if (planned != null) {
-                                        await controller.rescheduleTask(
-                                          task.id,
-                                          planned,
-                                        );
-                                      }
-                                    } else if (val == 'cancel') {
-                                      final reason =
-                                          await showCancelReasonDialog(
-                                        context: context,
-                                        task: task,
-                                      );
-                                      if (reason != null) {
-                                        await controller.cancelTask(
-                                          task.id,
-                                          reason: reason,
-                                        );
-                                      }
-                                    } else if (val == 'delete') {
-                                      await controller.deleteTask(task.id);
-                                    }
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(
-                                      value: 'reflect',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.psychology_outlined,
-                                              size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Reflect on Task'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'plan',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.alarm_add, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Set Reminder'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'cancel',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.cancel_outlined, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Cancel with Reason'),
-                                        ],
-                                      ),
-                                    ),
-                                    const PopupMenuItem(
-                                      value: 'delete',
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.delete_outline, size: 18),
-                                          SizedBox(width: 8),
-                                          Text('Delete'),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                            onDelete: (t) async {
+                              await controller.deleteTask(t.id);
+                            },
                           );
                         },
                       ),
@@ -982,9 +782,9 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
                             } else {
                               setState(() {
                                 _isLoading = false;
-                                _statusError =
-                                    widget.controller.googleLastError ??
-                                        'Failed to connect with token. Ensure Tasks API is enabled.';
+                                _statusError = widget
+                                        .controller.googleLastError ??
+                                    'Failed to connect with token. Ensure Tasks API is enabled.';
                               });
                             }
                           }
