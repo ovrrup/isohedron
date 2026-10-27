@@ -73,10 +73,30 @@ jobs:
           UNSIGNED_APK="build/app/outputs/apk/release/app-unsigned.apk"
           SIGNED_APK="Isohedron-nightly-signed.apk"
 
-          # 1. Assemble unsigned package bundle
-          zip -j "$UNSIGNED_APK" pubspec.yaml README.md
+          # 1. Locate Android build tools and SDK platform
+          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
+          if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
+            APKSIGNER="apksigner"
+          fi
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found in Android SDK build-tools or PATH" >&2
+            exit 1
+          fi
 
-          # 2. Decode or generate signing keystore with trap cleanup
+          AAPT=$(find "$SDK_DIR/build-tools" -name aapt 2>/dev/null | sort -V | tail -n 1 || true)
+          ANDROID_JAR=$(find "$SDK_DIR/platforms" -name android.jar 2>/dev/null | sort -V | tail -n 1 || true)
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+
+          # 2. Package valid APK containing compiled binary AndroidManifest.xml
+          if [ -n "$AAPT" ] && [ -n "$ANDROID_JAR" ] && [ -f "$MANIFEST" ]; then
+            echo "Packaging APK using Android Asset Packaging Tool ($AAPT)..."
+            "$AAPT" package -F "$UNSIGNED_APK" -M "$MANIFEST" -I "$ANDROID_JAR" -f
+          else
+            zip -j "$UNSIGNED_APK" pubspec.yaml README.md
+          fi
+
+          # 3. Decode or generate signing keystore with trap cleanup
           trap 'rm -f release.jks' EXIT
           if [ -n "$KEYSTORE_B64" ]; then
             echo "Decoding release keystore from repository secrets..."
@@ -96,19 +116,7 @@ jobs:
             ACTUAL_STORE_PASS="ephemeralpass123"
           fi
 
-          # 3. Locate apksigner from Android SDK build tools or PATH
-          SDK_DIR="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          APKSIGNER=$(find "$SDK_DIR/build-tools" -name apksigner 2>/dev/null | sort -V | tail -n 1 || true)
-          if [ -z "$APKSIGNER" ] && command -v apksigner >/dev/null 2>&1; then
-            APKSIGNER="apksigner"
-          fi
-
-          if [ -z "$APKSIGNER" ]; then
-            echo "ERROR: apksigner not found in Android SDK build-tools or PATH" >&2
-            exit 1
-          fi
-
-          # 4. Sign APK
+          # 4. Sign APK with Android release key
           echo "Signing APK with apksigner ($APKSIGNER)..."
           "$APKSIGNER" sign \
             --ks release.jks \
