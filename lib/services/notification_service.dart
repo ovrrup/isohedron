@@ -1,3 +1,4 @@
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../models/task_item.dart';
 
 class ScheduledNotificationRecord {
@@ -42,6 +43,94 @@ abstract class NotificationAdapter {
   });
   Future<void> cancel(int id);
   Future<void> cancelAll();
+}
+
+class FlutterLocalNotificationAdapter implements NotificationAdapter {
+  final FlutterLocalNotificationsPlugin _plugin;
+
+  FlutterLocalNotificationAdapter([FlutterLocalNotificationsPlugin? plugin])
+      : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+
+  static const String channelId = 'isohedron_reminders';
+  static const String channelName = 'Task Reminders';
+  static const String channelDesc = 'Notifications for scheduled tasks and planned reminders';
+
+  @override
+  Future<void> init() async {
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidInit);
+    await _plugin.initialize(initSettings);
+
+    const androidChannel = AndroidNotificationChannel(
+      channelId,
+      channelName,
+      description: channelDesc,
+      importance: Importance.high,
+    );
+
+    final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    await androidImplementation?.createNotificationChannel(androidChannel);
+  }
+
+  @override
+  Future<bool> requestPermissions() async {
+    final androidImplementation = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    final granted = await androidImplementation?.requestNotificationsPermission();
+    return granted ?? true;
+  }
+
+  @override
+  Future<void> schedule({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+
+    if (scheduledTime.isBefore(DateTime.now())) {
+      await showImmediate(id: id, title: title, body: body);
+      return;
+    }
+
+    await _plugin.show(id, title, body, details);
+  }
+
+  @override
+  Future<void> showImmediate({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+    );
+    const details = NotificationDetails(android: androidDetails);
+    await _plugin.show(id, title, body, details);
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    await _plugin.cancel(id);
+  }
+
+  @override
+  Future<void> cancelAll() async {
+    await _plugin.cancelAll();
+  }
 }
 
 class MockNotificationAdapter implements NotificationAdapter {
@@ -100,6 +189,9 @@ class NotificationService {
 
   NotificationService({NotificationAdapter? adapter})
       : _adapter = adapter ?? MockNotificationAdapter();
+
+  factory NotificationService.local() =>
+      NotificationService(adapter: FlutterLocalNotificationAdapter());
 
   Future<void> init() async {
     await _adapter.init();

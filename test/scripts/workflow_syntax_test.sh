@@ -45,7 +45,17 @@ if ! grep -q 'rm -f release.jks' "$WORKFLOW"; then
   exit 1
 fi
 
-# 5. Verify apksigner signing with min-sdk-version
+# 5. Verify real Flutter APK build and apksigner signing
+if ! grep -q 'flutter build apk --release' "$WORKFLOW"; then
+  echo "FAIL: Missing real flutter build apk --release step"
+  exit 1
+fi
+
+if ! grep -q 'build/app/outputs/flutter-apk/app-release.apk' "$WORKFLOW"; then
+  echo "FAIL: Missing reference to real compiled Flutter release APK"
+  exit 1
+fi
+
 if (! grep -q 'apksigner sign' "$WORKFLOW" && ! grep -q '"\$APKSIGNER" sign' "$WORKFLOW") || ! grep -q -- '--min-sdk-version' "$WORKFLOW"; then
   echo "FAIL: Missing apksigner sign step with --min-sdk-version"
   exit 1
