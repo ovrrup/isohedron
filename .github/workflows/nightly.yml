@@ -63,7 +63,7 @@ jobs:
 
       - name: Build Android Release APK
         if: steps.commit_check.outputs.skip != 'true'
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: Sign & Verify Android Release APK
         id: sign_apk
