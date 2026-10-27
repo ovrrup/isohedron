@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group>
+        <!-- Center Gem Accent (Crimson) -->
+        <path
+            android:fillColor="#D91A2A"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M54,40.56 L65.64,60.72 L42.36,60.72 Z"/>
+
+        <!-- Top Facet -->
+        <path
+            android:fillColor="#3B8EE8"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M54,26 L54,40.56 L29.75,40 Z"/>
+
+        <!-- Top Right Facet -->
+        <path
+            android:fillColor="#5CA3EE"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M54,26 L78.25,40 L54,40.56 Z"/>
+
+        <!-- Right Upper Facet -->
+        <path
+            android:fillColor="#1A6FBF"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M78.25,40 L65.64,60.72 L54,40.56 Z"/>
+
+        <!-- Right Lower Facet -->
+        <path
+            android:fillColor="#165FA4"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M78.25,40 L78.25,68 L65.64,60.72 Z"/>
+
+        <!-- Bottom Right Facet -->
+        <path
+            android:fillColor="#114B82"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M78.25,68 L54,82 L65.64,60.72 Z"/>
+
+        <!-- Bottom Facet -->
+        <path
+            android:fillColor="#0D3B68"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M54,82 L42.36,60.72 L65.64,60.72 Z"/>
+
+        <!-- Bottom Left Facet -->
+        <path
+            android:fillColor="#135390"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M54,82 L29.75,68 L42.36,60.72 Z"/>
+
+        <!-- Left Lower Facet -->
+        <path
+            android:fillColor="#1A6FBF"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M29.75,68 L29.75,40 L42.36,60.72 Z"/>
+
+        <!-- Left Upper Facet -->
+        <path
+            android:fillColor="#2E82DD"
+            android:strokeColor="#F5F0E8"
+            android:strokeWidth="1.2"
+            android:strokeLineJoin="round"
+            android:pathData="M29.75,40 L54,40.56 L42.36,60.72 Z"/>
+
+        <!-- Subtle Outer Boundary Hexagon -->
+        <path
+            android:strokeColor="#0E3760"
+            android:strokeWidth="1.8"
+            android:strokeLineJoin="round"
+            android:pathData="M54,26 L78.25,40 L78.25,68 L54,82 L29.75,68 L29.75,40 Z"/>
+    </group>
+</vector>

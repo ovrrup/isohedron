@@ -33,6 +33,17 @@ class IsohedronAppController extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   bool get isInitialized => _isInitialized;
   String? get errorMessage => _errorMessage;
+  bool get hasCompletedOnboarding => storage.hasCompletedOnboarding;
+
+  Future<void> completeOnboarding() async {
+    await storage.setHasCompletedOnboarding(true);
+    notifyListeners();
+  }
+
+  Future<void> resetOnboarding() async {
+    await storage.setHasCompletedOnboarding(false);
+    notifyListeners();
+  }
 
   bool get isGoogleConnected => googleTasks.isAuthenticated;
   String? get googleEmail => googleTasks.userEmail;

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../controllers/isohedron_app_controller.dart';
 import '../models/task_filter.dart';
+import '../theme/app_theme.dart';
 import 'cancel_reason_dialog.dart';
+import 'onboarding_screen.dart';
 import 'plan_task_dialog.dart';
 import 'reflection_dialog.dart';
 import 'task_list_switcher.dart';
+import 'widgets/isohedron_logo.dart';
 
 export '../controllers/isohedron_app_controller.dart';
 
@@ -42,12 +45,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: TaskListSwitcherDropdown(
-              availableLists: controller.taskLists,
-              selectedListId: controller.selectedListId,
-              onListSelected: (id) async {
-                await controller.switchList(id);
-              },
+            title: Row(
+              children: [
+                const IsohedronLogo(size: 26),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TaskListSwitcherDropdown(
+                    availableLists: controller.taskLists,
+                    selectedListId: controller.selectedListId,
+                    onListSelected: (id) async {
+                      await controller.switchList(id);
+                    },
+                  ),
+                ),
+              ],
             ),
             actions: [
               IconButton(
@@ -121,62 +132,106 @@ class _HomeScreenState extends State<HomeScreen> {
                   controller.currentFilter != TaskFilter.cancelled)
                 Padding(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: Card(
-                    color: theme.colorScheme.tertiaryContainer,
-                    elevation: 0,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.accent.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.accent.withOpacity(0.35),
+                        width: 1.5,
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.psychology_alt,
-                            color: theme.colorScheme.onTertiaryContainer,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accent.withOpacity(0.15),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${overdueTasks.length} planned task(s) need reflection',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onTertiaryContainer,
+                          child: const Icon(
+                            Icons.autorenew_rounded,
+                            color: AppTheme.accent,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${overdueTasks.length} task(s) awaiting reflection',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: theme.brightness == Brightness.dark
+                                      ? AppTheme.darkAccent
+                                      : const Color(0xFF5E0B12),
+                                ),
                               ),
+                              const SizedBox(height: 1),
+                              Text(
+                                'A gentle pause to reschedule or let go',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: theme.brightness == Brightness.dark
+                                      ? AppTheme.darkTextSecondary
+                                      : const Color(0xFF7A1C24),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppTheme.accent,
+                            foregroundColor: Colors.white,
+                            visualDensity: VisualDensity.compact,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                           ),
-                          FilledButton.tonal(
-                            onPressed: () async {
-                              final first = overdueTasks.first;
-                              final res = await showReflectionDialog(
-                                context: context,
-                                task: first,
-                              );
-                              if (res != null) {
-                                if (res.action == ReflectionAction.complete) {
-                                  await controller.completeTask(first.id);
-                                } else if (res.action ==
-                                    ReflectionAction.cancel) {
-                                  await controller.cancelTask(
-                                    first.id,
-                                    reason: res.cancelReason ?? 'Skipped',
-                                  );
-                                } else if (res.action ==
-                                        ReflectionAction.reschedule &&
-                                    res.newPlannedTime != null) {
-                                  await controller.rescheduleTask(
-                                    first.id,
-                                    res.newPlannedTime!,
-                                  );
-                                }
+                          onPressed: () async {
+                            final first = overdueTasks.first;
+                            final res = await showReflectionDialog(
+                              context: context,
+                              task: first,
+                            );
+                            if (res != null) {
+                              if (res.action == ReflectionAction.complete) {
+                                await controller.completeTask(first.id);
+                              } else if (res.action ==
+                                  ReflectionAction.cancel) {
+                                await controller.cancelTask(
+                                  first.id,
+                                  reason: res.cancelReason ?? 'Skipped',
+                                );
+                              } else if (res.action ==
+                                      ReflectionAction.reschedule &&
+                                  res.newPlannedTime != null) {
+                                await controller.rescheduleTask(
+                                  first.id,
+                                  res.newPlannedTime!,
+                                );
                               }
-                            },
-                            child: const Text('Reflect'),
+                            }
+                          },
+                          child: const Text(
+                            'Reflect',
+                            style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -218,15 +273,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(
-                              Icons.check_circle_outline,
-                              size: 64,
-                              color: theme.colorScheme.outlineVariant,
+                            Opacity(
+                              opacity: 0.5,
+                              child: const IsohedronLogo(size: 72),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 18),
                             Text(
-                              'No tasks found',
+                              'Sanctuary is Clear',
                               style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: theme.colorScheme.onSurface.withOpacity(0.8),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Tap + below to set your next intention',
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.outline,
                               ),
                             ),
@@ -660,12 +722,14 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
     return AlertDialog(
       title: Row(
         children: [
-          Icon(
-            isConnected ? Icons.cloud_done : Icons.cloud_sync_outlined,
-            color: isConnected ? Colors.green : theme.colorScheme.primary,
-          ),
+          const IsohedronLogo(size: 24),
           const SizedBox(width: 8),
-          const Text('Google Tasks Account'),
+          Expanded(
+            child: Text(
+              isConnected ? 'Connected Account' : 'Account & Sync',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
       content: ConstrainedBox(
@@ -677,6 +741,17 @@ class _GoogleAccountDialogState extends State<_GoogleAccountDialog>
         ),
       ),
       actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => OnboardingScreen(controller: widget.controller),
+              ),
+            );
+          },
+          child: const Text('Welcome Guide'),
+        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Close'),

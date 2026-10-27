@@ -129,5 +129,21 @@ void main() {
       await controller.switchList('local_default');
       expect(controller.selectedListId, 'local_default');
     });
+
+    test('manages onboarding state and notifies listeners', () async {
+      expect(controller.hasCompletedOnboarding, isFalse);
+
+      bool notified = false;
+      controller.addListener(() {
+        notified = true;
+      });
+
+      await controller.completeOnboarding();
+      expect(controller.hasCompletedOnboarding, isTrue);
+      expect(notified, isTrue);
+
+      await controller.resetOnboarding();
+      expect(controller.hasCompletedOnboarding, isFalse);
+    });
   });
 }

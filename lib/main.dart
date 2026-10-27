@@ -4,7 +4,9 @@ import 'package:path_provider/path_provider.dart';
 import 'services/google_tasks_service.dart';
 import 'services/notification_service.dart';
 import 'services/storage_service.dart';
+import 'theme/app_theme.dart';
 import 'ui/home_screen.dart';
+import 'ui/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,35 +46,20 @@ class IsohedronApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const seedColor = Color(0xFF6366F1); // Indigo accent
-
-    return MaterialApp(
-      title: 'Isohedron Tasks',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.light,
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-        ),
-      ),
-      darkTheme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: Brightness.dark,
-        ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: false,
-          elevation: 0,
-        ),
-      ),
-      themeMode: ThemeMode.system,
-      home: HomeScreen(controller: controller),
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Isohedron',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
+          home: controller.hasCompletedOnboarding
+              ? HomeScreen(controller: controller)
+              : OnboardingScreen(controller: controller),
+        );
+      },
     );
   }
 }
