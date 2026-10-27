@@ -169,5 +169,12 @@ void main() {
       expect(remoteTasksAfter.any((t) => t.id == remoteTaskToDelete.id), isFalse);
       expect(storage.getDeletedTaskIds(), isNot(contains(remoteTaskToDelete.id)));
     });
+
+    test('LiveGoogleTasksClient exposes default GCP Client ID', () {
+      expect(
+        LiveGoogleTasksClient.defaultClientId,
+        '123682783046-oitk011evt0thq64jvoluja61rl97nhv.apps.googleusercontent.com',
+      );
+    });
   });
 }
