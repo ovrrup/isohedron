@@ -23,6 +23,15 @@ void main() {
 
       expect(AppTheme.primaryLabelLight, const Color(0xFF000000));
       expect(AppTheme.secondaryLabelLight, const Color(0xFF8E8E93));
+
+      // UI Aliases
+      expect(AppTheme.lightSystemGroupedBackground,
+          AppTheme.groupedBackgroundLight);
+      expect(AppTheme.lightSecondaryGroupedBackground,
+          AppTheme.secondaryGroupedBackgroundLight);
+      expect(AppTheme.lightLabelPrimary, AppTheme.primaryLabelLight);
+      expect(AppTheme.lightLabelSecondary, AppTheme.secondaryLabelLight);
+      expect(AppTheme.lightSeparator, AppTheme.hairlineDividerLight);
     });
 
     test('Dark mode system color tokens match Apple HIG specifications', () {
@@ -34,10 +43,26 @@ void main() {
       expect(AppTheme.backgroundDark, const Color(0xFF000000));
       expect(AppTheme.groupedBackgroundDark, const Color(0xFF1C1C1E));
       expect(AppTheme.secondaryGroupedBackgroundDark, const Color(0xFF2C2C2E));
+      expect(AppTheme.tertiaryGroupedBackgroundDark, const Color(0xFF3A3A3C));
       expect(AppTheme.hairlineDividerDark, const Color(0xFF38383A));
 
       expect(AppTheme.primaryLabelDark, const Color(0xFFFFFFFF));
       expect(AppTheme.secondaryLabelDark, const Color(0xFF8E8E93));
+
+      // UI Aliases
+      expect(
+          AppTheme.darkSystemGroupedBackground, AppTheme.groupedBackgroundDark);
+      expect(AppTheme.darkSecondaryGroupedBackground,
+          AppTheme.secondaryGroupedBackgroundDark);
+      expect(AppTheme.darkTertiaryGroupedBackground,
+          AppTheme.tertiaryGroupedBackgroundDark);
+      expect(AppTheme.darkLabelPrimary, AppTheme.primaryLabelDark);
+      expect(AppTheme.darkLabelSecondary, AppTheme.secondaryLabelDark);
+      expect(AppTheme.darkSeparator, AppTheme.hairlineDividerDark);
+      expect(AppTheme.darkSystemBlue, AppTheme.systemBlueDark);
+      expect(AppTheme.darkSystemGreen, AppTheme.systemGreenDark);
+      expect(AppTheme.darkSystemOrange, AppTheme.systemOrangeDark);
+      expect(AppTheme.darkSystemRed, AppTheme.systemRedDark);
     });
 
     test('Legacy tokens preserve backward compatibility with iOS mappings', () {

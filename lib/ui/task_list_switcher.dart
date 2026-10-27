@@ -139,7 +139,8 @@ class TaskListSwitcherDropdown extends StatelessWidget {
               color: isDark ? AppTheme.darkSystemBlue : AppTheme.systemBlue,
             ),
             const SizedBox(width: 6),
-            Flexible(
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
               child: Text(
                 current.title,
                 maxLines: 1,

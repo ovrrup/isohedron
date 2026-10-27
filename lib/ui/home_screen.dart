@@ -365,7 +365,11 @@ class _HomeScreenState extends State<HomeScreen> {
                                         context: context,
                                         initialTime: t.plannedTime,
                                       );
-                                      if (planned != null) {
+                                      if (planned ==
+                                          PlanTaskHelper
+                                              .clearReminderSentinel) {
+                                        await controller.clearReminder(t.id);
+                                      } else if (planned != null) {
                                         await controller.rescheduleTask(
                                           t.id,
                                           planned,

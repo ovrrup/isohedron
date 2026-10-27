@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 
 class PlanTaskHelper {
+  static final DateTime clearReminderSentinel =
+      DateTime.fromMillisecondsSinceEpoch(0);
+
   static DateTime plusOneHour({DateTime? from}) {
     final base = from ?? DateTime.now();
     return base.add(const Duration(hours: 1));
@@ -162,6 +165,9 @@ Future<DateTime?> showPlanTaskDialog({
                   SizedBox(
                     height: 216,
                     child: CupertinoDatePicker(
+                      key: ValueKey(
+                        'cupertino_picker_${chosen.millisecondsSinceEpoch}',
+                      ),
                       mode: CupertinoDatePickerMode.dateAndTime,
                       initialDateTime: chosen.isAfter(DateTime.now())
                           ? chosen
@@ -184,7 +190,8 @@ Future<DateTime?> showPlanTaskDialog({
                         minSize: 36,
                         onPressed: () {
                           HapticFeedback.lightImpact();
-                          Navigator.of(ctx).pop(null);
+                          Navigator.of(ctx)
+                              .pop(PlanTaskHelper.clearReminderSentinel);
                         },
                         child: Text(
                           'Remove Reminder',

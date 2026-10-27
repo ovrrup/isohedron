@@ -4,7 +4,7 @@ import 'package:isohedron/models/task_list.dart';
 import 'package:isohedron/services/google_tasks_service.dart';
 import 'package:isohedron/services/notification_service.dart';
 import 'package:isohedron/services/storage_service.dart';
-import 'package:isohedron/ui/home_screen.dart';
+import 'package:isohedron/controllers/isohedron_app_controller.dart';
 
 void main() {
   group('IsohedronAppController Smoke Test', () {

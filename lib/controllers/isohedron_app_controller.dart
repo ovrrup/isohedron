@@ -344,6 +344,30 @@ class IsohedronAppController extends ChangeNotifier {
     await loadCurrentTasks();
   }
 
+  Future<void> clearReminder(String taskId) async {
+    final task = _currentTasks.cast<TaskItem?>().firstWhere(
+          (t) => t?.id == taskId,
+          orElse: () => null,
+        );
+    if (task == null) return;
+
+    final updated = task.copyWith(
+      clearPlannedTime: true,
+      updatedAt: DateTime.now(),
+    );
+
+    await storage.upsertTask(updated);
+    await notifications.cancelReminder(taskId);
+
+    if (isGoogleConnected && !currentList.isLocal) {
+      try {
+        await googleTasks.pushTask(updated);
+      } catch (_) {}
+    }
+
+    await loadCurrentTasks();
+  }
+
   Future<void> reopenTask(String taskId, {DateTime? newPlannedTime}) async {
     final task = _currentTasks.cast<TaskItem?>().firstWhere(
           (t) => t?.id == taskId,

@@ -70,6 +70,14 @@ class AppTheme {
   static const Color groupedBackground = groupedBackgroundLight;
   static const Color secondaryGroupedBackground =
       secondaryGroupedBackgroundLight;
+  static const Color lightSystemGroupedBackground = groupedBackgroundLight;
+  static const Color darkSystemGroupedBackground = groupedBackgroundDark;
+  static const Color lightSecondaryGroupedBackground =
+      secondaryGroupedBackgroundLight;
+  static const Color darkSecondaryGroupedBackground =
+      secondaryGroupedBackgroundDark;
+  static const Color darkTertiaryGroupedBackground =
+      tertiaryGroupedBackgroundDark;
 
   // ---------------------------------------------------------------------------
   // Hairline Dividers & Separators
@@ -77,6 +85,8 @@ class AppTheme {
   static const Color hairlineDividerLight = Color(0xFFC6C6C8);
   static const Color hairlineDividerDark = Color(0xFF38383A);
   static const Color hairlineDivider = hairlineDividerLight;
+  static const Color lightSeparator = hairlineDividerLight;
+  static const Color darkSeparator = hairlineDividerDark;
 
   // ---------------------------------------------------------------------------
   // iOS Typography Labels
@@ -90,6 +100,17 @@ class AppTheme {
   static const Color secondaryLabelDark = Color(0xFF8E8E93);
   static const Color tertiaryLabelDark = Color(0x7CEBEBF5);
   static const Color quaternaryLabelDark = Color(0x2EEBEBF5);
+
+  static const Color lightLabelPrimary = primaryLabelLight;
+  static const Color darkLabelPrimary = primaryLabelDark;
+  static const Color lightLabelSecondary = secondaryLabelLight;
+  static const Color darkLabelSecondary = secondaryLabelDark;
+
+  // Accent Dark Aliases
+  static const Color darkSystemBlue = systemBlueDark;
+  static const Color darkSystemGreen = systemGreenDark;
+  static const Color darkSystemOrange = systemOrangeDark;
+  static const Color darkSystemRed = systemRedDark;
 
   // ---------------------------------------------------------------------------
   // Backward Compatibility Tokens
