@@ -1,297 +1,583 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+/// Isohedron iOS Minimal Design System & Theme.
+///
+/// Implements authentic Apple Human Interface Guidelines (HIG) design tokens,
+/// SF Pro typography styles, grouped inset surfaces, hairline separators,
+/// and CupertinoThemeData integration.
 class AppTheme {
-  // Brand Palette
-  static const Color primary = Color(0xFF1A6FBF); // Cerulean Blue
-  static const Color primaryDark = Color(0xFF13538F);
-  static const Color primaryLight = Color(0xFF4C91D3);
-  static const Color canvas = Color(0xFFF5F0E8); // Warm Linen / Parchment
-  static const Color accent = Color(0xFFD91A2A); // Crimson Accent / Alert
+  // ---------------------------------------------------------------------------
+  // Apple iOS System Colors (Light & Dark)
+  // ---------------------------------------------------------------------------
+
+  // System Blue
+  static const Color systemBlueLight = Color(0xFF007AFF);
+  static const Color systemBlueDark = Color(0xFF0A84FF);
+  static const Color systemBlue = systemBlueLight;
+
+  // System Red
+  static const Color systemRedLight = Color(0xFFFF3B30);
+  static const Color systemRedDark = Color(0xFFFF453A);
+  static const Color systemRed = systemRedLight;
+
+  // System Green
+  static const Color systemGreenLight = Color(0xFF34C759);
+  static const Color systemGreenDark = Color(0xFF30D158);
+  static const Color systemGreen = systemGreenLight;
+
+  // System Orange
+  static const Color systemOrangeLight = Color(0xFFFF9500);
+  static const Color systemOrangeDark = Color(0xFFFF9F0A);
+  static const Color systemOrange = systemOrangeLight;
+
+  // System Yellow
+  static const Color systemYellowLight = Color(0xFFFFCC00);
+  static const Color systemYellowDark = Color(0xFFFFD60A);
+  static const Color systemYellow = systemYellowLight;
+
+  // System Gray Scale
+  static const Color systemGray = Color(0xFF8E8E93);
+  static const Color systemGrayDark = Color(0xFF8E8E93);
+  static const Color systemGray2Light = Color(0xFFAEAEB2);
+  static const Color systemGray2Dark = Color(0xFF636366);
+  static const Color systemGray3Light = Color(0xFFC7C7CC);
+  static const Color systemGray3Dark = Color(0xFF48484A);
+  static const Color systemGray4Light = Color(0xFFD1D1D6);
+  static const Color systemGray4Dark = Color(0xFF3A3A3C);
+  static const Color systemGray5Light = Color(0xFFE5E5EA);
+  static const Color systemGray5Dark = Color(0xFF2C2C2E);
+  static const Color systemGray6Light = Color(0xFFF2F2F7);
+  static const Color systemGray6Dark = Color(0xFF1C1C1E);
+
+  // ---------------------------------------------------------------------------
+  // iOS Grouped & Background Surfaces
+  // ---------------------------------------------------------------------------
+
+  // Light Surfaces
+  static const Color backgroundLight = Color(0xFFFFFFFF);
+  static const Color groupedBackgroundLight = Color(0xFFF2F2F7);
+  static const Color secondaryGroupedBackgroundLight = Color(0xFFFFFFFF);
+  static const Color tertiaryGroupedBackgroundLight = Color(0xFFF2F2F7);
+
+  // Dark Surfaces (OLED True Black Background + Grouped Grays)
+  static const Color backgroundDark = Color(0xFF000000);
+  static const Color groupedBackgroundDark = Color(0xFF1C1C1E);
+  static const Color secondaryGroupedBackgroundDark = Color(0xFF2C2C2E);
+  static const Color tertiaryGroupedBackgroundDark = Color(0xFF3A3A3C);
+
+  // Common Aliases
+  static const Color groupedBackground = groupedBackgroundLight;
+  static const Color secondaryGroupedBackground =
+      secondaryGroupedBackgroundLight;
+
+  // ---------------------------------------------------------------------------
+  // Hairline Dividers & Separators
+  // ---------------------------------------------------------------------------
+  static const Color hairlineDividerLight = Color(0xFFC6C6C8);
+  static const Color hairlineDividerDark = Color(0xFF38383A);
+  static const Color hairlineDivider = hairlineDividerLight;
+
+  // ---------------------------------------------------------------------------
+  // iOS Typography Labels
+  // ---------------------------------------------------------------------------
+  static const Color primaryLabelLight = Color(0xFF000000);
+  static const Color secondaryLabelLight = Color(0xFF8E8E93);
+  static const Color tertiaryLabelLight = Color(0x7C3C3C43);
+  static const Color quaternaryLabelLight = Color(0x2E3C3C43);
+
+  static const Color primaryLabelDark = Color(0xFFFFFFFF);
+  static const Color secondaryLabelDark = Color(0xFF8E8E93);
+  static const Color tertiaryLabelDark = Color(0x7CEBEBF5);
+  static const Color quaternaryLabelDark = Color(0x2EEBEBF5);
+
+  // ---------------------------------------------------------------------------
+  // Backward Compatibility Tokens
+  // ---------------------------------------------------------------------------
+  static const Color primary = systemBlueLight;
+  static const Color primaryDark = Color(0xFF0056B3);
+  static const Color primaryLight = systemBlueDark;
+  static const Color canvas = groupedBackgroundLight;
+  static const Color accent = systemRedLight;
   static const Color accentLight = Color(0xFFFFECEB);
 
-  // Light Mode Surfaces & Neutrals
-  static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightSurfaceContainer = Color(0xFFEFE8DD);
-  static const Color lightTextPrimary = Color(0xFF1C1B1F);
-  static const Color lightTextSecondary = Color(0xFF535F70);
-  static const Color lightOutline = Color(0xFFD5CEBF);
+  static const Color lightSurface = secondaryGroupedBackgroundLight;
+  static const Color lightSurfaceContainer = systemGray5Light;
+  static const Color lightTextPrimary = primaryLabelLight;
+  static const Color lightTextSecondary = secondaryLabelLight;
+  static const Color lightOutline = hairlineDividerLight;
 
-  // Dark Mode Palette
-  static const Color darkCanvas = Color(0xFF11171E);
-  static const Color darkSurface = Color(0xFF19222C);
-  static const Color darkSurfaceContainer = Color(0xFF222D3A);
-  static const Color darkPrimary = Color(0xFF5B9FE8);
-  static const Color darkAccent = Color(0xFFFF6B6B);
-  static const Color darkTextPrimary = Color(0xFFE3E8EF);
-  static const Color darkTextSecondary = Color(0xFF94A3B8);
-  static const Color darkOutline = Color(0xFF334155);
+  static const Color darkCanvas = backgroundDark;
+  static const Color darkSurface = groupedBackgroundDark;
+  static const Color darkSurfaceContainer = secondaryGroupedBackgroundDark;
+  static const Color darkPrimary = systemBlueDark;
+  static const Color darkAccent = systemRedDark;
+  static const Color darkTextPrimary = primaryLabelDark;
+  static const Color darkTextSecondary = secondaryLabelDark;
+  static const Color darkOutline = hairlineDividerDark;
 
-  static ThemeData get lightTheme {
+  // ---------------------------------------------------------------------------
+  // iOS Light Theme
+  // ---------------------------------------------------------------------------
+  static ThemeData get iosLightTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.light,
-      primary: primary,
+      primary: systemBlueLight,
       onPrimary: Colors.white,
       primaryContainer: Color(0xFFD6E4F7),
-      onPrimaryContainer: primaryDark,
-      secondary: primaryDark,
+      onPrimaryContainer: Color(0xFF0056B3),
+      secondary: systemBlueLight,
       onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFE2EAF2),
-      onSecondaryContainer: Color(0xFF0F2B47),
-      tertiary: accent,
+      secondaryContainer: Color(0xFFE5E5EA),
+      onSecondaryContainer: Color(0xFF1C1C1E),
+      tertiary: systemRedLight,
       onTertiary: Colors.white,
-      tertiaryContainer: accentLight,
+      tertiaryContainer: Color(0xFFFFECEB),
       onTertiaryContainer: Color(0xFF5E0B12),
-      error: accent,
+      error: systemRedLight,
       onError: Colors.white,
-      surface: canvas,
-      onSurface: lightTextPrimary,
-      surfaceContainerHighest: lightSurfaceContainer,
-      outline: lightOutline,
-      outlineVariant: Color(0xFFE4DEC8),
+      surface: secondaryGroupedBackgroundLight,
+      onSurface: primaryLabelLight,
+      surfaceContainerHighest: systemGray5Light,
+      outline: hairlineDividerLight,
+      outlineVariant: Color(0xFFE5E5EA),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: canvas,
+      scaffoldBackgroundColor: groupedBackgroundLight,
+      cupertinoOverrideTheme: cupertinoLightTheme,
       appBarTheme: const AppBarTheme(
-        backgroundColor: canvas,
-        foregroundColor: lightTextPrimary,
+        backgroundColor: groupedBackgroundLight,
+        foregroundColor: primaryLabelLight,
         elevation: 0,
-        scrolledUnderElevation: 1.0,
-        centerTitle: false,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         titleTextStyle: TextStyle(
-          color: lightTextPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          color: primaryLabelLight,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
-        color: lightSurface,
-        elevation: 0.5,
-        shadowColor: Colors.black.withValues(alpha: 0.04),
+        color: secondaryGroupedBackgroundLight,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFFEBE4D5), width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: secondaryGroupedBackgroundLight,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: hairlineDividerLight,
+        thickness: 0.5,
+        space: 1.0,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: lightSurfaceContainer,
-        selectedColor: primary,
+        backgroundColor: systemGray5Light,
+        selectedColor: systemBlueLight,
         labelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: lightTextSecondary,
+          color: secondaryLabelLight,
+          letterSpacing: -0.2,
         ),
         secondaryLabelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: Colors.white,
+          letterSpacing: -0.2,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide.none,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primary,
+          backgroundColor: systemBlueLight,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
+            letterSpacing: -0.3,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: primary,
-          side: const BorderSide(color: primary, width: 1.5),
+          foregroundColor: systemBlueLight,
+          side: const BorderSide(color: systemBlueLight, width: 1.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: primary,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: systemBlueLight,
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: lightSurface,
+        fillColor: secondaryGroupedBackgroundLight,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: lightOutline),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: hairlineDividerLight, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: lightOutline),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: hairlineDividerLight, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: primary, width: 2),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: systemBlueLight, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: canvas,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 34,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: primaryLabelLight,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: primaryLabelLight,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+          color: primaryLabelLight,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+          color: primaryLabelLight,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.4,
+          color: primaryLabelLight,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.2,
+          color: primaryLabelLight,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.1,
+          color: secondaryLabelLight,
+        ),
+        labelSmall: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+          color: secondaryLabelLight,
         ),
       ),
     );
   }
 
-  static ThemeData get darkTheme {
+  // ---------------------------------------------------------------------------
+  // iOS Dark Theme (Pure OLED Black Background + Dark Grouped Cards)
+  // ---------------------------------------------------------------------------
+  static ThemeData get iosDarkTheme {
     const colorScheme = ColorScheme(
       brightness: Brightness.dark,
-      primary: darkPrimary,
-      onPrimary: Color(0xFF0A223B),
+      primary: systemBlueDark,
+      onPrimary: Colors.white,
       primaryContainer: Color(0xFF173F68),
       onPrimaryContainer: Color(0xFFCEE3FA),
-      secondary: darkPrimary,
-      onSecondary: Colors.black,
-      secondaryContainer: Color(0xFF1E2E40),
-      onSecondaryContainer: darkTextPrimary,
-      tertiary: darkAccent,
-      onTertiary: Colors.black,
+      secondary: systemBlueDark,
+      onSecondary: Colors.white,
+      secondaryContainer: Color(0xFF2C2C2E),
+      onSecondaryContainer: primaryLabelDark,
+      tertiary: systemRedDark,
+      onTertiary: Colors.white,
       tertiaryContainer: Color(0xFF4A181A),
       onTertiaryContainer: Color(0xFFFFDAD8),
-      error: darkAccent,
-      onError: Colors.black,
-      surface: darkCanvas,
-      onSurface: darkTextPrimary,
-      surfaceContainerHighest: darkSurfaceContainer,
-      outline: darkOutline,
+      error: systemRedDark,
+      onError: Colors.white,
+      surface: secondaryGroupedBackgroundDark,
+      onSurface: primaryLabelDark,
+      surfaceContainerHighest: systemGray4Dark,
+      outline: hairlineDividerDark,
       outlineVariant: Color(0xFF253344),
     );
 
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: darkCanvas,
+      scaffoldBackgroundColor: backgroundDark,
+      cupertinoOverrideTheme: cupertinoDarkTheme,
       appBarTheme: const AppBarTheme(
-        backgroundColor: darkCanvas,
-        foregroundColor: darkTextPrimary,
+        backgroundColor: backgroundDark,
+        foregroundColor: primaryLabelDark,
         elevation: 0,
-        scrolledUnderElevation: 1.0,
-        centerTitle: false,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
         titleTextStyle: TextStyle(
-          color: darkTextPrimary,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -0.3,
+          color: primaryLabelDark,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
         ),
       ),
       cardTheme: CardThemeData(
-        color: darkSurface,
+        color: secondaryGroupedBackgroundDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF283647), width: 1),
+          borderRadius: BorderRadius.circular(12),
         ),
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: secondaryGroupedBackgroundDark,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: hairlineDividerDark,
+        thickness: 0.5,
+        space: 1.0,
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: darkSurfaceContainer,
-        selectedColor: darkPrimary,
+        backgroundColor: secondaryGroupedBackgroundDark,
+        selectedColor: systemBlueDark,
         labelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: darkTextSecondary,
+          color: secondaryLabelDark,
+          letterSpacing: -0.2,
         ),
         secondaryLabelStyle: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Color(0xFF0A223B),
+          color: Colors.white,
+          letterSpacing: -0.2,
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide.none,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: darkPrimary,
-          foregroundColor: const Color(0xFF0A223B),
+          backgroundColor: systemBlueDark,
+          foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.2,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: darkPrimary,
-          side: const BorderSide(color: darkPrimary, width: 1.5),
+          foregroundColor: systemBlueDark,
+          side: const BorderSide(color: systemBlueDark, width: 1.0),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
         ),
       ),
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: darkPrimary,
-        foregroundColor: const Color(0xFF0A223B),
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: systemBlueDark,
+          textStyle: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: darkSurface,
+        fillColor: secondaryGroupedBackgroundDark,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkOutline),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: hairlineDividerDark, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkOutline),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: hairlineDividerDark, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: darkPrimary, width: 2),
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: systemBlueDark, width: 1.5),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: darkCanvas,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(
+          fontSize: 34,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: primaryLabelDark,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: primaryLabelDark,
+        ),
+        titleLarge: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+          color: primaryLabelDark,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+          color: primaryLabelDark,
+        ),
+        bodyLarge: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.4,
+          color: primaryLabelDark,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.2,
+          color: primaryLabelDark,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.1,
+          color: secondaryLabelDark,
+        ),
+        labelSmall: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+          color: secondaryLabelDark,
         ),
       ),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // CupertinoThemeData Standalone
+  // ---------------------------------------------------------------------------
+  static CupertinoThemeData get cupertinoLightTheme {
+    return CupertinoThemeData(
+      brightness: Brightness.light,
+      primaryColor: systemBlueLight,
+      primaryContrastingColor: Colors.white,
+      barBackgroundColor: groupedBackgroundLight.withValues(alpha: 0.9),
+      scaffoldBackgroundColor: groupedBackgroundLight,
+      textTheme: const CupertinoTextThemeData(
+        primaryColor: primaryLabelLight,
+        textStyle: TextStyle(
+          color: primaryLabelLight,
+          fontSize: 17,
+          letterSpacing: -0.4,
+        ),
+        navTitleTextStyle: TextStyle(
+          color: primaryLabelLight,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+        ),
+        navLargeTitleTextStyle: TextStyle(
+          color: primaryLabelLight,
+          fontSize: 34,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+        ),
+      ),
+    );
+  }
+
+  static CupertinoThemeData get cupertinoDarkTheme {
+    return CupertinoThemeData(
+      brightness: Brightness.dark,
+      primaryColor: systemBlueDark,
+      primaryContrastingColor: Colors.white,
+      barBackgroundColor: backgroundDark.withValues(alpha: 0.9),
+      scaffoldBackgroundColor: backgroundDark,
+      textTheme: const CupertinoTextThemeData(
+        primaryColor: primaryLabelDark,
+        textStyle: TextStyle(
+          color: primaryLabelDark,
+          fontSize: 17,
+          letterSpacing: -0.4,
+        ),
+        navTitleTextStyle: TextStyle(
+          color: primaryLabelDark,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          letterSpacing: -0.4,
+        ),
+        navLargeTitleTextStyle: TextStyle(
+          color: primaryLabelDark,
+          fontSize: 34,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Legacy Theme Getters (routing to iOS themes)
+  // ---------------------------------------------------------------------------
+  static ThemeData get lightTheme => iosLightTheme;
+  static ThemeData get darkTheme => iosDarkTheme;
 }
