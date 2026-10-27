@@ -237,45 +237,14 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
   }
 }
 
-    final googleNotes = TaskItem.toGoogleNotes(
-      userNotes: task.notes,
-      plannedTime: task.plannedTime,
-      cancelReason: task.cancelReason,
-    );
-
-    final isLocalId = task.id.startsWith('local_') || task.id.startsWith('task_');
-    final gTask = gtasks.Task(
-      id: isLocalId ? null : task.id,
-      title: task.title,
-      notes: googleNotes,
-      status: (task.isCompleted || task.isCancelled) ? 'completed' : 'needsAction',
-      due: task.due?.toUtc().toIso8601String(),
-    );
-
-    gtasks.Task response;
-    if (gTask.id != null) {
-      response = await api.tasks.update(gTask, task.taskListId, gTask.id!);
-    } else {
-      response = await api.tasks.insert(gTask, task.taskListId);
-    }
-
-    return TaskItem.parseFromGoogleTask(
-      id: response.id ?? task.id,
-      taskListId: task.taskListId,
-      title: response.title ?? task.title,
-      rawNotes: response.notes,
-      due: response.due != null ? DateTime.parse(response.due!) : null,
-      isCompleted: response.status == 'completed',
-      updatedAt: response.updated != null ? DateTime.parse(response.updated!) : DateTime.now(),
-    );
-  }
-}
-
 class GoogleTasksService {
   final GoogleTasksClient _client;
 
   GoogleTasksService({GoogleTasksClient? client})
       : _client = client ?? LiveGoogleTasksClient();
+
+  factory GoogleTasksService.live([GoogleSignIn? googleSignIn]) =>
+      GoogleTasksService(client: LiveGoogleTasksClient(googleSignIn: googleSignIn));
 
   factory GoogleTasksService.mock({
     String mockEmail = 'user@example.com',
