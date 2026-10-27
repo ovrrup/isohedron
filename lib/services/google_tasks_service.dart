@@ -1,3 +1,4 @@
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/tasks/v1.dart' as gtasks;
 import 'package:http/http.dart' as http;
 import '../models/task_item.dart';
@@ -12,6 +13,19 @@ abstract class GoogleTasksClient {
   Future<List<TaskList>> fetchTaskLists();
   Future<List<TaskItem>> fetchTasks(String taskListId);
   Future<TaskItem> pushTask(TaskItem task);
+}
+
+class GoogleAuthClient extends http.BaseClient {
+  final Map<String, String> _headers;
+  final http.Client _client;
+
+  GoogleAuthClient(this._headers, [http.Client? client])
+      : _client = client ?? http.Client();
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    return _client.send(request..headers.addAll(_headers));
+  }
 }
 
 class MockGoogleTasksClient implements GoogleTasksClient {
@@ -92,12 +106,17 @@ class MockGoogleTasksClient implements GoogleTasksClient {
 }
 
 class LiveGoogleTasksClient implements GoogleTasksClient {
-  final http.Client _httpClient;
+  final GoogleSignIn _googleSignIn;
   gtasks.TasksApi? _tasksApi;
   String? _userEmail;
 
-  LiveGoogleTasksClient({http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  LiveGoogleTasksClient({GoogleSignIn? googleSignIn})
+      : _googleSignIn = googleSignIn ??
+            GoogleSignIn(
+              scopes: [
+                'https://www.googleapis.com/auth/tasks',
+              ],
+            );
 
   @override
   bool get isAuthenticated => _tasksApi != null;
@@ -107,14 +126,24 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
 
   @override
   Future<bool> signIn() async {
-    // In production mobile runtime, this receives the authenticated OAuth client.
-    _tasksApi = gtasks.TasksApi(_httpClient);
-    _userEmail = 'connected@google.com';
-    return true;
+    try {
+      final account = await _googleSignIn.signIn();
+      if (account == null) return false;
+      final auth = await account.authHeaders;
+      final authClient = GoogleAuthClient(auth);
+      _tasksApi = gtasks.TasksApi(authClient);
+      _userEmail = account.email;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
   Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {}
     _tasksApi = null;
     _userEmail = null;
   }
@@ -168,6 +197,45 @@ class LiveGoogleTasksClient implements GoogleTasksClient {
   Future<TaskItem> pushTask(TaskItem task) async {
     final api = _tasksApi;
     if (api == null) throw StateError('Not signed in to Google Tasks');
+
+    final googleNotes = TaskItem.toGoogleNotes(
+      userNotes: task.notes,
+      plannedTime: task.plannedTime,
+      cancelReason: task.cancelReason,
+    );
+
+    final gTask = gtasks.Task()
+      ..title = task.title
+      ..notes = googleNotes
+      ..status = task.isCompleted ? 'completed' : 'needsAction';
+
+    if (task.due != null) {
+      gTask.due = task.due!.toUtc().toIso8601String();
+    }
+
+    gtasks.Task resultTask;
+    try {
+      resultTask = await api.tasks.update(gTask, task.taskListId, task.id);
+    } catch (_) {
+      resultTask = await api.tasks.insert(gTask, task.taskListId);
+    }
+
+    final isCompleted = resultTask.status == 'completed';
+    final updatedAt = resultTask.updated != null
+        ? DateTime.parse(resultTask.updated!)
+        : DateTime.now();
+
+    return TaskItem.parseFromGoogleTask(
+      id: resultTask.id ?? task.id,
+      taskListId: task.taskListId,
+      title: resultTask.title ?? task.title,
+      rawNotes: resultTask.notes,
+      due: task.due,
+      isCompleted: isCompleted,
+      updatedAt: updatedAt,
+    );
+  }
+}
 
     final googleNotes = TaskItem.toGoogleNotes(
       userNotes: task.notes,
