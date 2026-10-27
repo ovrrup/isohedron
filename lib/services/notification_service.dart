@@ -158,16 +158,6 @@ class FlutterLocalNotificationAdapter implements NotificationAdapter {
       await _plugin.cancelAll();
     } catch (_) {}
   }
-
-  @override
-  Future<void> cancel(int id) async {
-    await _plugin.cancel(id);
-  }
-
-  @override
-  Future<void> cancelAll() async {
-    await _plugin.cancelAll();
-  }
 }
 
 class MockNotificationAdapter implements NotificationAdapter {
