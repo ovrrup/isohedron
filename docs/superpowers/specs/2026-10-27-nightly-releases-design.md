@@ -56,7 +56,7 @@ Provide an automated, professional nightly release channel for Isohedron that co
 ## 5. Implementation Specification
 
 ### 5.1 Signing Credentials Management
-* **Keystore Generation:** Generate an RSA 2048-bit PKCS#12 Android Release Keystore (`isohedron-release.jks`, alias `isohedron`, validity 10000 days).
+* **Keystore Generation:** Standard RSA 2048-bit PKCS#12 Android Release Keystore configured via repository secrets.
 * **Security & Git Hygiene:** Add `*.jks` and `*.keystore` to `.gitignore` so private keys are never committed to the public git repository.
 * **Secret Configuration:** Store credentials in GitHub Repository Secrets via `gh secret set`:
   * `ANDROID_KEYSTORE_BASE64`: Base64-encoded keystore binary.

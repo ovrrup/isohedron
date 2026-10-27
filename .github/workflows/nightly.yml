@@ -109,10 +109,11 @@ jobs:
               exit 1
             fi
             echo "Non-official fork detected; generating ephemeral signing key for CI..."
-            bash scripts/generate-keystore.sh --output release.jks --alias isohedron --password ephemeralpass123
+            EPHEMERAL_PASS=$(openssl rand -hex 16)
+            keytool -genkeypair -v -keystore release.jks -alias isohedron -keyalg RSA -keysize 2048 -validity 1 -storepass "$EPHEMERAL_PASS" -keypass "$EPHEMERAL_PASS" -dname "CN=Isohedron, O=OpenSource, C=US"
             ACTUAL_ALIAS="isohedron"
-            ACTUAL_KEY_PASS="ephemeralpass123"
-            ACTUAL_STORE_PASS="ephemeralpass123"
+            ACTUAL_KEY_PASS="$EPHEMERAL_PASS"
+            ACTUAL_STORE_PASS="$EPHEMERAL_PASS"
           fi
 
           # 3. Sign APK with Android release key

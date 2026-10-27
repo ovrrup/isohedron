@@ -27,37 +27,16 @@
 
 ---
 
-### Task 1: Signing Credentials Generation & Security Configuration
+### Task 1: Security Configuration
 
 **Files:**
 - Modify: `.gitignore`
-- Create: `scripts/generate-keystore.sh`
-- Test: `test/scripts/keystore_test.sh`
 
 **Interfaces:**
-- Produces: Keystore generation script, git safety rules, and validation test verifying PKCS#12 keystore creation and base64 export.
-
-- [ ] **Step 1: Write test for keystore generation script**
-  Test that `scripts/generate-keystore.sh` creates a valid PKCS#12 keystore file and generates a non-empty base64 string.
-
-- [ ] **Step 2: Run test to verify it fails**
-  Run: `bash test/scripts/keystore_test.sh`
-  Expected: FAIL (script not found)
+- Produces: Git safety rules for signing secrets.
 
 - [ ] **Step 3: Update `.gitignore` for keystores and signing properties**
   Add `*.jks`, `*.keystore`, `*.p12`, and `key.properties`.
-
-- [ ] **Step 4: Implement `scripts/generate-keystore.sh`**
-  Use `openssl` to generate RSA 2048-bit key and self-signed certificate, export to PKCS#12 `.jks` file with specified alias and password, and output instructions for `gh secret set`.
-
-- [ ] **Step 5: Run test to verify it passes**
-  Run: `bash test/scripts/keystore_test.sh`
-  Expected: PASS
-
-- [ ] **Step 6: Commit**
-  ```bash
-  git add .gitignore scripts/generate-keystore.sh test/scripts/keystore_test.sh
-  git commit -m "feat(signing): add keystore generation script and security ignore rules"
   ```
 
 ---
@@ -111,7 +90,7 @@
 - Produces: Comprehensive guide for configuring GitHub Secrets, rotating keys, and downloading nightly builds.
 
 - [ ] **Step 1: Create `docs/SIGNING.md`**
-  Detail how to generate credentials using `scripts/generate-keystore.sh`, how to set secrets via `gh secret set`, and how the signing pipeline operates in CI.
+  Detail the signing pipeline and security practices in CI.
 
 - [ ] **Step 2: Update `README.md` with Nightly Channel information**
   Add Nightly Channel badge, permanent download URL (`https://github.com/ovrrup/isohedron/releases/tag/nightly`), and signing details.
